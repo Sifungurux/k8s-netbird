@@ -1,0 +1,207 @@
+# NetBird Helm values – PoC configuration
+# Base domain: netbird.kirk-pedersen.dk
+# Ingress: Traefik
+# TLS: cert-manager (Let's Encrypt)
+#
+# Prerequisites:
+#   helm repo add netbird https://netbird.io/helm
+#   helm repo update
+#
+# Install:
+#   helm install netbird netbird/netbird \
+#     -n netbird --create-namespace \
+#     -f netbird-values.yaml
+
+# ---------------------------------------------------------------------------
+# Global
+# ---------------------------------------------------------------------------
+global:
+  # Replace with your actual domain
+  baseDomain: netbird.kirk-pedersen.dk
+
+# ---------------------------------------------------------------------------
+# Management service
+# URL: https://api.netbird.kirk-pedersen.dk
+# ---------------------------------------------------------------------------
+management:
+  enabled: true
+
+  # Keycloak OIDC – fill in after Keycloak client is created (Phase 2)
+  oidcConfigEndpoint: "https://keycloak.netbird.kirk-pedersen.dk/realms/netbird/.well-known/openid-configuration"
+
+  # Port the management gRPC/HTTP API listens on internally
+  port: 80
+  grpcPort: 33073
+
+  # Persistent storage for management state (SQLite by default for PoC)
+  datastore:
+    engine: sqlite   # switch to postgres for production
+
+  # Resource limits – tune for your cluster
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod   # match your ClusterIssuer name
+      traefik.ingress.kubernetes.io/router.entrypoints: websecure
+      traefik.ingress.kubernetes.io/router.tls: "true"
+    hosts:
+      - host: api.netbird.kirk-pedersen.dk
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: netbird-management-tls
+        hosts:
+          - api.netbird.kirk-pedersen.dk
+
+# ---------------------------------------------------------------------------
+# Signal service
+# URL: https://signal.netbird.kirk-pedersen.dk
+# Must be reachable by ALL peers (including those outside the cluster)
+# ---------------------------------------------------------------------------
+signal:
+  enabled: true
+  port: 80
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+      traefik.ingress.kubernetes.io/router.entrypoints: websecure
+      traefik.ingress.kubernetes.io/router.tls: "true"
+    hosts:
+      - host: signal.netbird.kirk-pedersen.dk
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: netbird-signal-tls
+        hosts:
+          - signal.netbird.kirk-pedersen.dk
+
+# ---------------------------------------------------------------------------
+# Dashboard (UI)
+# URL: https://app.netbird.kirk-pedersen.dk
+# ---------------------------------------------------------------------------
+dashboard:
+  enabled: true
+
+  # Must match what you configure in Keycloak client
+  authClientId: "netbird"
+  authAuthority: "https://keycloak.netbird.kirk-pedersen.dk/realms/netbird"
+  useAuth0: false
+
+  # API endpoint the dashboard talks to
+  netbirdMgmtApiEndpoint: "https://api.netbird.kirk-pedersen.dk"
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+      traefik.ingress.kubernetes.io/router.entrypoints: websecure
+      traefik.ingress.kubernetes.io/router.tls: "true"
+    hosts:
+      - host: app.netbird.kirk-pedersen.dk
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: netbird-dashboard-tls
+        hosts:
+          - app.netbird.kirk-pedersen.dk
+
+# ---------------------------------------------------------------------------
+# Relay / TURN (coturn)
+# Handles peers that cannot establish direct WireGuard connections (NAT/CGNAT)
+#
+# NOTE: coturn needs a UDP port range open on the node – see firewall note below.
+# ---------------------------------------------------------------------------
+coturn:
+  enabled: true
+
+  # Exposed via LoadBalancer or NodePort – NOT via ingress (UDP traffic)
+  service:
+    type: LoadBalancer   # change to NodePort if no LB available in your cluster
+
+  # TURN credentials – change these!
+  username: netbird
+  password: CHANGE_ME_STRONG_PASSWORD
+
+  # The public IP/hostname peers will use to reach coturn.
+  # If using LoadBalancer, set this to the LB external IP after deployment.
+  externalIP: ""          # e.g. 203.0.113.10
+  externalDomain: ""      # or use a hostname: turn.netbird.kirk-pedersen.dk
+
+  # UDP port range for TURN relay – must be open in your firewall
+  minPort: 49152
+  maxPort: 65535
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+# ---------------------------------------------------------------------------
+# Firewall / network checklist
+# ---------------------------------------------------------------------------
+# The following ports must be reachable from external peers:
+#
+#   443/TCP  → signal.netbird.kirk-pedersen.dk  (signal, via Traefik)
+#   443/TCP  → api.netbird.kirk-pedersen.dk     (management, via Traefik)
+#   443/TCP  → app.netbird.kirk-pedersen.dk     (dashboard, via Traefik)
+#   3478/UDP → coturn node/LB IP           (STUN/TURN)
+#   49152-65535/UDP → coturn node/LB IP    (TURN relay media ports)
+#
+# Keycloak must also be reachable by peers for device auth flow:
+#   443/TCP  → keycloak.netbird.kirk-pedersen.dk
+
+# ---------------------------------------------------------------------------
+# Next steps after helm install
+# ---------------------------------------------------------------------------
+# 1. Verify all pods are Running:
+#      kubectl get pods -n netbird
+#
+# 2. Check ingress and TLS certs are issued:
+#      kubectl get ingress -n netbird
+#      kubectl get certificate -n netbird
+#
+# 3. Get coturn LoadBalancer IP and set externalIP above, then helm upgrade.
+#
+# 4. Proceed to Phase 2: configure Keycloak OIDC client for NetBird.
+#    Required Keycloak settings:
+#      - Client ID:        netbird
+#      - Client Protocol:  openid-connect
+#      - Access Type:      public
+#      - Device Auth Flow: enabled
+#      - Valid Redirect:   https://app.netbird.kirk-pedersen.dk/*
+#      - Web Origins:      https://app.netbird.kirk-pedersen.dk

@@ -1,0 +1,16 @@
+# Secrets — aldrig commit disse
+config/*-secrets.yaml
+config/*-secret.yaml
+*.secret.yaml
+.env
+
+# Lokale overrides med rigtige passwords
+config/netbird-values-prod.yaml
+config/keycloak-values-prod.yaml
+
+# kubeconfig
+kubeconfig
+*.kubeconfig
+
+# macOS
+.DS_Store

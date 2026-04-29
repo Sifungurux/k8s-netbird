@@ -1,0 +1,50 @@
+# Keycloak Helm values – lokal PoC (k3d + Colima)
+# Brug denne fil i stedet for keycloak-values.yaml til lokal test
+#
+# Install:
+#   helm install keycloak bitnami/keycloak \
+#     -n keycloak --create-namespace \
+#     -f keycloak-values-local.yaml
+
+auth:
+  adminUser: admin
+  adminPassword: CHANGE_ME_STRONG_ADMIN_PASSWORD
+
+production: true
+proxy: edge
+hostname: keycloak.netbird.172.20.10.2.nip.io
+
+postgresql:
+  enabled: true
+  auth:
+    username: keycloak
+    password: CHANGE_ME_DB_PASSWORD
+    database: keycloak
+  primary:
+    persistence:
+      enabled: true
+      size: 2Gi
+
+replicaCount: 1
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+ingress:
+  enabled: true
+  ingressClassName: traefik
+  annotations:
+    cert-manager.io/cluster-issuer: netbird-ca-issuer
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+  hostname: keycloak.netbird.172.20.10.2.nip.io
+  tls: true
+  extraTls:
+    - hosts:
+        - keycloak.netbird.172.20.10.2.nip.io
+      secretName: keycloak-tls
