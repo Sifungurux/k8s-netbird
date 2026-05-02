@@ -11,7 +11,7 @@ auth:
   adminPassword: CHANGE_ME_STRONG_ADMIN_PASSWORD
 
 production: true
-proxy: edge
+proxyHeaders: xforwarded
 hostname: keycloak.netbird.192.168.50.57.nip.io
 
 postgresql:

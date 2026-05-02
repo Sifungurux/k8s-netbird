@@ -27,8 +27,9 @@ auth:
 # Production mode enforces HTTPS – set to true since we have TLS via Traefik
 production: true
 
-# Proxy mode: edge = TLS terminated at ingress (Traefik), Keycloak sees HTTP
-proxy: edge
+# proxyHeaders: Keycloak 22+ (Quarkus) uses this instead of the old proxy=edge.
+# xforwarded = trust X-Forwarded-* headers from Traefik.
+proxyHeaders: xforwarded
 
 # Hostname – must match the ingress host
 hostname: keycloak.netbird.kirk-pedersen.dk
