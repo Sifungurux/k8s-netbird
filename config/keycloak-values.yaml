@@ -7,9 +7,6 @@
 #   helm repo add codecentric https://codecentric.github.io/helm-charts
 #   helm repo update
 
-image:
-  tag: "26"
-
 # Production mode: start (not start-dev) — requires external DB and TLS
 command:
   - "/opt/keycloak/bin/kc.sh"

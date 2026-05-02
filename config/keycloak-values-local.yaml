@@ -4,9 +4,6 @@
 # PoC mode: start-dev with embedded H2 — no external DB needed.
 # Switch to start + PostgreSQL when moving to managed cluster.
 
-image:
-  tag: "26"
-
 # start-dev: embedded H2, relaxed TLS checks — PoC only
 command:
   - "/opt/keycloak/bin/kc.sh"
