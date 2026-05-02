@@ -95,7 +95,7 @@ netbird-status:
 .PHONY: netbird-repos
 netbird-repos:
 	@echo "→ Tilføjer Helm repos..."
-	helm repo add netbird  https://netbird.io/helm
+	helm repo add netbird  https://netbirdio.github.io/helms
 	helm repo add bitnami  https://charts.bitnami.com/bitnami
 	helm repo add jetstack https://charts.jetstack.io
 	helm repo update
