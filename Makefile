@@ -110,8 +110,8 @@ netbird-infra:
 	helm upgrade --install cert-manager jetstack/cert-manager \
 		--namespace cert-manager \
 		--create-namespace \
-		--set installCRDs=true \
-		--atomic \
+		--set crds.enabled=true \
+		--rollback-on-failure \
 		--timeout 5m
 	@echo "✓ cert-manager klar"
 
@@ -121,41 +121,7 @@ netbird-infra:
 .PHONY: netbird-pki
 netbird-pki:
 	@echo "→ Bootstrap intern CA..."
-	kubectl apply -f - <<'EOF'
-	---
-	apiVersion: cert-manager.io/v1
-	kind: ClusterIssuer
-	metadata:
-	  name: selfsigned-root
-	spec:
-	  selfSigned: {}
-	---
-	apiVersion: cert-manager.io/v1
-	kind: Certificate
-	metadata:
-	  name: netbird-root-ca
-	  namespace: cert-manager
-	spec:
-	  isCA: true
-	  commonName: NetBird Local CA
-	  secretName: netbird-root-ca-secret
-	  duration: 87600h
-	  privateKey:
-	    algorithm: ECDSA
-	    size: 384
-	  issuerRef:
-	    name: selfsigned-root
-	    kind: ClusterIssuer
-	    group: cert-manager.io
-	---
-	apiVersion: cert-manager.io/v1
-	kind: ClusterIssuer
-	metadata:
-	  name: netbird-ca-issuer
-	spec:
-	  ca:
-	    secretName: netbird-root-ca-secret
-	EOF
+	kubectl apply -f manifests/pki.yaml
 	@echo "→ Venter på Root CA..."
 	kubectl wait --for=condition=Ready certificate/netbird-root-ca \
 		-n cert-manager --timeout=60s
