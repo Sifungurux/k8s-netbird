@@ -28,10 +28,10 @@ Følg derefter `docs/keycloak-realm-setup.md` for at opsætte `netbird` realm og
 
 | Service | URL |
 |---|---|
-| Dashboard | https://app.netbird.172.20.10.2.nip.io |
-| Management API | https://api.netbird.172.20.10.2.nip.io |
-| Signal | https://signal.netbird.172.20.10.2.nip.io |
-| Keycloak | https://keycloak.netbird.172.20.10.2.nip.io |
+| Dashboard | https://app.netbird.192.168.50.57.nip.io |
+| Management API | https://api.netbird.192.168.50.57.nip.io |
+| Signal | https://signal.netbird.192.168.50.57.nip.io |
+| Keycloak | https://keycloak.netbird.192.168.50.57.nip.io |
 
 > IP opdateres i `Makefile` og `config/*-local.yaml` hvis lokal IP skifter.
 

@@ -1,11 +1,11 @@
 # NetBird Helm values – lokal PoC (k3d + Colima)
 # Brug denne fil i stedet for netbird-values.yaml til lokal test
 #
-# VIGTIGT: LOCAL_IP nedenfor er din nuværende hotspot-IP (172.20.10.2)
-# Hvis IP'en skifter: søg/erstat 172.20.10.2 med ny IP i denne fil
+# VIGTIGT: LOCAL_IP nedenfor er din nuværende hotspot-IP (192.168.50.57)
+# Hvis IP'en skifter: søg/erstat 192.168.50.57 med ny IP i denne fil
 # og opdater coturn.externalIP tilsvarende
 #
-# nip.io løser automatisk *.172.20.10.2.nip.io → 172.20.10.2
+# nip.io løser automatisk *.192.168.50.57.nip.io → 192.168.50.57
 # Ingen /etc/hosts nødvendigt — virker for alle enheder på netværket
 #
 # Install:
@@ -14,11 +14,11 @@
 #     -f netbird-values-local.yaml
 
 global:
-  baseDomain: netbird.172.20.10.2.nip.io
+  baseDomain: netbird.192.168.50.57.nip.io
 
 management:
   enabled: true
-  oidcConfigEndpoint: "https://keycloak.netbird.172.20.10.2.nip.io/realms/netbird/.well-known/openid-configuration"
+  oidcConfigEndpoint: "https://keycloak.netbird.192.168.50.57.nip.io/realms/netbird/.well-known/openid-configuration"
   port: 80
   grpcPort: 33073
   datastore:
@@ -38,14 +38,14 @@ management:
       traefik.ingress.kubernetes.io/router.entrypoints: websecure
       traefik.ingress.kubernetes.io/router.tls: "true"
     hosts:
-      - host: api.netbird.172.20.10.2.nip.io
+      - host: api.netbird.192.168.50.57.nip.io
         paths:
           - path: /
             pathType: Prefix
     tls:
       - secretName: netbird-management-tls
         hosts:
-          - api.netbird.172.20.10.2.nip.io
+          - api.netbird.192.168.50.57.nip.io
 
 signal:
   enabled: true
@@ -65,21 +65,21 @@ signal:
       traefik.ingress.kubernetes.io/router.entrypoints: websecure
       traefik.ingress.kubernetes.io/router.tls: "true"
     hosts:
-      - host: signal.netbird.172.20.10.2.nip.io
+      - host: signal.netbird.192.168.50.57.nip.io
         paths:
           - path: /
             pathType: Prefix
     tls:
       - secretName: netbird-signal-tls
         hosts:
-          - signal.netbird.172.20.10.2.nip.io
+          - signal.netbird.192.168.50.57.nip.io
 
 dashboard:
   enabled: true
   authClientId: "netbird"
-  authAuthority: "https://keycloak.netbird.172.20.10.2.nip.io/realms/netbird"
+  authAuthority: "https://keycloak.netbird.192.168.50.57.nip.io/realms/netbird"
   useAuth0: false
-  netbirdMgmtApiEndpoint: "https://api.netbird.172.20.10.2.nip.io"
+  netbirdMgmtApiEndpoint: "https://api.netbird.192.168.50.57.nip.io"
   resources:
     requests:
       cpu: 50m
@@ -95,14 +95,14 @@ dashboard:
       traefik.ingress.kubernetes.io/router.entrypoints: websecure
       traefik.ingress.kubernetes.io/router.tls: "true"
     hosts:
-      - host: app.netbird.172.20.10.2.nip.io
+      - host: app.netbird.192.168.50.57.nip.io
         paths:
           - path: /
             pathType: Prefix
     tls:
       - secretName: netbird-dashboard-tls
         hosts:
-          - app.netbird.172.20.10.2.nip.io
+          - app.netbird.192.168.50.57.nip.io
 
 coturn:
   enabled: true
@@ -110,7 +110,7 @@ coturn:
     type: LoadBalancer
   username: netbird
   password: CHANGE_ME_STRONG_PASSWORD
-  externalIP: "172.20.10.2"   # din lokale IP — opdater hvis den skifter
+  externalIP: "192.168.50.57"   # din lokale IP — opdater hvis den skifter
   externalDomain: ""
   minPort: 49152
   maxPort: 65535

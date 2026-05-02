@@ -11,7 +11,7 @@ COLIMA_MEMORY    := 6    # GiB
 COLIMA_DISK      := 40   # GiB
 
 # Opdater denne hvis din lokale IP skifter
-LOCAL_IP         := 172.20.10.2
+LOCAL_IP         := 192.168.50.57
 
 .DEFAULT_GOAL := help
 
