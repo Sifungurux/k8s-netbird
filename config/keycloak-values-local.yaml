@@ -1,31 +1,31 @@
 # Keycloak Helm values – lokal PoC (k3d + Colima)
-# Brug denne fil i stedet for keycloak-values.yaml til lokal test
+# Chart: codecentric/keycloakx (uses official quay.io/keycloak/keycloak)
 #
-# Install:
-#   helm install keycloak bitnami/keycloak \
-#     -n keycloak --create-namespace \
-#     -f keycloak-values-local.yaml
+# PoC mode: start-dev with embedded H2 — no external DB needed.
+# Switch to start + PostgreSQL when moving to managed cluster.
 
-auth:
-  adminUser: admin
-  adminPassword: CHANGE_ME_STRONG_ADMIN_PASSWORD
+image:
+  tag: "26"
 
-production: true
-proxyHeaders: xforwarded
-hostname: keycloak.netbird.192.168.50.57.nip.io
+# start-dev: embedded H2, relaxed TLS checks — PoC only
+command:
+  - "/opt/keycloak/bin/kc.sh"
+  - "start-dev"
 
-postgresql:
-  enabled: true
-  auth:
-    username: keycloak
-    password: CHANGE_ME_DB_PASSWORD
-    database: keycloak
-  primary:
-    persistence:
-      enabled: true
-      size: 2Gi
+extraEnv: |
+  - name: KEYCLOAK_ADMIN
+    value: admin
+  - name: KEYCLOAK_ADMIN_PASSWORD
+    value: CHANGE_ME_STRONG_ADMIN_PASSWORD
+  - name: KC_HOSTNAME
+    value: keycloak.netbird.192.168.50.57.nip.io
+  - name: KC_PROXY_HEADERS
+    value: xforwarded
+  - name: KC_HTTP_ENABLED
+    value: "true"
 
-replicaCount: 1
+http:
+  relativePath: "/"
 
 resources:
   requests:
@@ -42,9 +42,12 @@ ingress:
     cert-manager.io/cluster-issuer: netbird-ca-issuer
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
     traefik.ingress.kubernetes.io/router.tls: "true"
-  hostname: keycloak.netbird.192.168.50.57.nip.io
-  tls: true
-  extraTls:
+  rules:
+    - host: keycloak.netbird.192.168.50.57.nip.io
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
     - hosts:
         - keycloak.netbird.192.168.50.57.nip.io
       secretName: keycloak-tls

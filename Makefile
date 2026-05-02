@@ -95,9 +95,9 @@ netbird-status:
 .PHONY: netbird-repos
 netbird-repos:
 	@echo "→ Tilføjer Helm repos..."
-	helm repo add netbird  https://netbirdio.github.io/helms
-	helm repo add bitnami  https://charts.bitnami.com/bitnami
-	helm repo add jetstack https://charts.jetstack.io
+	helm repo add netbird     https://netbirdio.github.io/helms
+	helm repo add codecentric https://codecentric.github.io/helm-charts
+	helm repo add jetstack    https://charts.jetstack.io
 	helm repo update
 	@echo "✓ Done"
 
@@ -133,11 +133,11 @@ netbird-pki:
 .PHONY: netbird-keycloak
 netbird-keycloak:
 	@echo "→ Deployer Keycloak..."
-	helm upgrade --install keycloak bitnami/keycloak \
+	helm upgrade --install keycloak codecentric/keycloakx \
 		--namespace keycloak \
 		--create-namespace \
 		--values config/keycloak-values-local.yaml \
-		--atomic \
+		--rollback-on-failure \
 		--timeout 10m
 	@echo "✓ Keycloak klar"
 	@echo "  Admin UI: https://keycloak.netbird.$(LOCAL_IP).nip.io/admin"

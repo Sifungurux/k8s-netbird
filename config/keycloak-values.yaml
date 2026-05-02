@@ -1,58 +1,41 @@
-# Keycloak Helm values – NetBird PoC
-# Version: Keycloak 22+ (Quarkus-based, Bitnami chart)
-# Namespace: keycloak (separate from netbird for clean separation)
-# Ingress: Traefik
-# TLS: cert-manager (Let's Encrypt)
+# Keycloak Helm values – NetBird PoC (managed cluster)
+# Chart: codecentric/keycloakx (uses official quay.io/keycloak/keycloak)
+# Namespace: keycloak
+# Ingress: Traefik + Let's Encrypt
 #
 # Prerequisites:
-#   helm repo add bitnami https://charts.bitnami.com/bitnami
+#   helm repo add codecentric https://codecentric.github.io/helm-charts
 #   helm repo update
-#
-# Install:
-#   helm install keycloak bitnami/keycloak \
-#     -n keycloak --create-namespace \
-#     -f keycloak-values.yaml
 
-# ---------------------------------------------------------------------------
-# Admin credentials
-# IMPORTANT: Change these before deploying. Consider using a Kubernetes secret.
-# ---------------------------------------------------------------------------
-auth:
-  adminUser: admin
-  adminPassword: CHANGE_ME_STRONG_ADMIN_PASSWORD
+image:
+  tag: "26"
 
-# ---------------------------------------------------------------------------
-# Keycloak configuration
-# ---------------------------------------------------------------------------
-# Production mode enforces HTTPS – set to true since we have TLS via Traefik
-production: true
+# Production mode: start (not start-dev) — requires external DB and TLS
+command:
+  - "/opt/keycloak/bin/kc.sh"
+  - "start"
 
-# proxyHeaders: Keycloak 22+ (Quarkus) uses this instead of the old proxy=edge.
-# xforwarded = trust X-Forwarded-* headers from Traefik.
-proxyHeaders: xforwarded
+extraEnv: |
+  - name: KEYCLOAK_ADMIN
+    value: admin
+  - name: KEYCLOAK_ADMIN_PASSWORD
+    value: CHANGE_ME_STRONG_ADMIN_PASSWORD
+  - name: KC_HOSTNAME
+    value: keycloak.netbird.kirk-pedersen.dk
+  - name: KC_PROXY_HEADERS
+    value: xforwarded
+  - name: KC_DB
+    value: postgres
+  - name: KC_DB_URL
+    value: jdbc:postgresql://postgres-keycloak:5432/keycloak
+  - name: KC_DB_USERNAME
+    value: keycloak
+  - name: KC_DB_PASSWORD
+    value: CHANGE_ME_DB_PASSWORD
 
-# Hostname – must match the ingress host
-hostname: keycloak.netbird.kirk-pedersen.dk
+http:
+  relativePath: "/"
 
-# ---------------------------------------------------------------------------
-# Database – PostgreSQL (bundled)
-# Keycloak 22+ requires a proper DB. Bitnami chart includes PostgreSQL.
-# ---------------------------------------------------------------------------
-postgresql:
-  enabled: true
-  auth:
-    username: keycloak
-    password: CHANGE_ME_DB_PASSWORD
-    database: keycloak
-
-# ---------------------------------------------------------------------------
-# Replicas – 1 for PoC
-# ---------------------------------------------------------------------------
-replicaCount: 1
-
-# ---------------------------------------------------------------------------
-# Resources
-# ---------------------------------------------------------------------------
 resources:
   requests:
     cpu: 200m
@@ -61,13 +44,6 @@ resources:
     cpu: 1000m
     memory: 1Gi
 
-# ---------------------------------------------------------------------------
-# Ingress
-# Keycloak must be reachable by:
-#   1. NetBird management (server-to-server OIDC discovery)
-#   2. End-user browsers (device auth flow redirect)
-# Both require a valid public TLS cert.
-# ---------------------------------------------------------------------------
 ingress:
   enabled: true
   ingressClassName: traefik
@@ -75,40 +51,12 @@ ingress:
     cert-manager.io/cluster-issuer: letsencrypt-prod
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
     traefik.ingress.kubernetes.io/router.tls: "true"
-  hostname: keycloak.netbird.kirk-pedersen.dk
-  tls: true
-  extraTls:
+  rules:
+    - host: keycloak.netbird.kirk-pedersen.dk
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
     - hosts:
         - keycloak.netbird.kirk-pedersen.dk
       secretName: keycloak-tls
-
-# ---------------------------------------------------------------------------
-# Persistence for PostgreSQL
-# ---------------------------------------------------------------------------
-postgresql:
-  primary:
-    persistence:
-      enabled: true
-      size: 2Gi
-
-# ---------------------------------------------------------------------------
-# Post-install: Realm & Client setup
-# See keycloak-realm-setup.md for manual steps, or use the realm import below.
-# ---------------------------------------------------------------------------
-
-# ---------------------------------------------------------------------------
-# Next steps after helm install
-# ---------------------------------------------------------------------------
-# 1. Verify pods are Running:
-#      kubectl get pods -n keycloak
-#
-# 2. Check TLS cert is issued:
-#      kubectl get certificate -n keycloak
-#
-# 3. Open https://keycloak.netbird.kirk-pedersen.dk/admin and log in as admin
-#
-# 4. Follow keycloak-realm-setup.md to create the 'netbird' realm and client
-#
-# 5. Update netbird-values.yaml with the OIDC discovery URL:
-#      oidcConfigEndpoint: https://keycloak.netbird.kirk-pedersen.dk/realms/netbird/.well-known/openid-configuration
-#    Then: helm upgrade netbird netbird/netbird -n netbird -f netbird-values.yaml
