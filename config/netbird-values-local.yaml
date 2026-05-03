@@ -1,28 +1,105 @@
 # NetBird Helm values – lokal PoC (k3d + Colima)
-# Brug denne fil i stedet for netbird-values.yaml til lokal test
+# Chart: netbird/netbird
 #
-# VIGTIGT: LOCAL_IP nedenfor er din nuværende hotspot-IP (192.168.50.57)
+# VIGTIGT: IP nedenfor er din nuværende lokale IP (192.168.50.57)
 # Hvis IP'en skifter: søg/erstat 192.168.50.57 med ny IP i denne fil
-# og opdater coturn.externalIP tilsvarende
-#
-# nip.io løser automatisk *.192.168.50.57.nip.io → 192.168.50.57
-# Ingen /etc/hosts nødvendigt — virker for alle enheder på netværket
-#
-# Install:
-#   helm install netbird netbird/netbird \
-#     -n netbird --create-namespace \
-#     -f netbird-values-local.yaml
-
-global:
-  baseDomain: netbird.192.168.50.57.nip.io
 
 management:
   enabled: true
-  oidcConfigEndpoint: "https://keycloak.netbird.192.168.50.57.nip.io/realms/netbird/.well-known/openid-configuration"
-  port: 80
-  grpcPort: 33073
-  datastore:
-    engine: sqlite
+
+  podCommand:
+    args:
+      - --port=80
+      - --log-file=console
+      - --log-level=info
+      - --disable-anonymous-metrics=true
+      - --single-account-mode-domain=netbird.192.168.50.57.nip.io
+      - --dns-domain=netbird.192.168.50.57.nip.io
+
+  configmap: |-
+    {
+      "Stuns": [
+        {
+          "Proto": "udp",
+          "URI": "stun:192.168.50.57:3478",
+          "Username": "",
+          "Password": ""
+        }
+      ],
+      "TURNConfig": {
+        "TimeBasedCredentials": false,
+        "CredentialsTTL": "12h0m0s",
+        "Secret": "secret",
+        "Turns": [
+          {
+            "Proto": "udp",
+            "URI": "turn:192.168.50.57:3478",
+            "Username": "netbird",
+            "Password": "CHANGE_ME_STRONG_PASSWORD"
+          }
+        ]
+      },
+      "Signal": {
+        "Proto": "https",
+        "URI": "signal.netbird.192.168.50.57.nip.io:443",
+        "Username": "",
+        "Password": ""
+      },
+      "Datadir": "/var/lib/netbird/",
+      "DataStoreEncryptionKey": "o188kFnz7nybaesCk3XNoNJwQpsPJqAyuOYMm7psO9w=",
+      "HttpConfig": {
+        "LetsEncryptDomain": "",
+        "CertFile": "",
+        "CertKey": "",
+        "AuthAudience": "netbird",
+        "AuthIssuer": "https://keycloak.netbird.192.168.50.57.nip.io/realms/netbird",
+        "AuthUserIDClaim": "",
+        "AuthKeysLocation": "https://keycloak.netbird.192.168.50.57.nip.io/realms/netbird/protocol/openid-connect/certs",
+        "OIDCConfigEndpoint": "https://keycloak.netbird.192.168.50.57.nip.io/realms/netbird/.well-known/openid-configuration",
+        "IdpSignKeyRefreshEnabled": false
+      },
+      "IdpManagerConfig": {
+        "ManagerType": "none"
+      },
+      "DeviceAuthorizationFlow": {
+        "Provider": "hosted",
+        "ProviderConfig": {
+          "ClientID": "netbird",
+          "ClientSecret": "",
+          "Domain": "keycloak.netbird.192.168.50.57.nip.io",
+          "Audience": "netbird",
+          "TokenEndpoint": "https://keycloak.netbird.192.168.50.57.nip.io/realms/netbird/protocol/openid-connect/token",
+          "DeviceAuthEndpoint": "https://keycloak.netbird.192.168.50.57.nip.io/realms/netbird/protocol/openid-connect/auth/device",
+          "AuthorizationEndpoint": "",
+          "Scope": "openid",
+          "UseIDToken": false,
+          "RedirectURLs": null
+        }
+      },
+      "PKCEAuthorizationFlow": {
+        "ProviderConfig": {
+          "ClientID": "netbird",
+          "ClientSecret": "",
+          "Domain": "",
+          "Audience": "netbird",
+          "TokenEndpoint": "https://keycloak.netbird.192.168.50.57.nip.io/realms/netbird/protocol/openid-connect/token",
+          "DeviceAuthEndpoint": "",
+          "AuthorizationEndpoint": "https://keycloak.netbird.192.168.50.57.nip.io/realms/netbird/protocol/openid-connect/auth",
+          "Scope": "openid profile email",
+          "UseIDToken": false,
+          "RedirectURLs": ["http://localhost:53000"]
+        }
+      },
+      "StoreConfig": {
+        "Engine": "sqlite"
+      },
+      "ReverseProxy": {
+        "TrustedHTTPProxies": null,
+        "TrustedHTTPProxiesCount": 0,
+        "TrustedPeers": null
+      }
+    }
+
   resources:
     requests:
       cpu: 100m
@@ -30,6 +107,7 @@ management:
     limits:
       cpu: 500m
       memory: 512Mi
+
   ingress:
     enabled: true
     ingressClassName: traefik
@@ -76,10 +154,15 @@ signal:
 
 dashboard:
   enabled: true
-  authClientId: "netbird"
-  authAuthority: "https://keycloak.netbird.192.168.50.57.nip.io/realms/netbird"
-  useAuth0: false
-  netbirdMgmtApiEndpoint: "https://api.netbird.192.168.50.57.nip.io"
+  env:
+    NETBIRD_MGMT_API_ENDPOINT: "https://api.netbird.192.168.50.57.nip.io"
+    NETBIRD_MGMT_GRPC_API_ENDPOINT: "https://api.netbird.192.168.50.57.nip.io"
+    AUTH_CLIENT_ID: "netbird"
+    AUTH_AUTHORITY: "https://keycloak.netbird.192.168.50.57.nip.io/realms/netbird"
+    AUTH_AUDIENCE: "netbird"
+    USE_AUTH0: "false"
+    AUTH_SUPPORTED_SCOPES: "openid profile email"
+    NETBIRD_TOKEN_SOURCE: "accessToken"
   resources:
     requests:
       cpu: 50m
@@ -110,8 +193,7 @@ coturn:
     type: LoadBalancer
   username: netbird
   password: CHANGE_ME_STRONG_PASSWORD
-  externalIP: "192.168.50.57"   # din lokale IP — opdater hvis den skifter
-  externalDomain: ""
+  externalIP: "192.168.50.57"
   minPort: 49152
   maxPort: 65535
   resources:
