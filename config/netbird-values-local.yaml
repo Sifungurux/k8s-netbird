@@ -100,6 +100,23 @@ management:
       }
     }
 
+  # Mount internal CA so management can verify Keycloak's self-signed TLS cert
+  volumes:
+    - name: internal-ca
+      secret:
+        secretName: netbird-root-ca-secret
+        items:
+          - key: tls.crt
+            path: ca.crt
+
+  volumeMounts:
+    - name: internal-ca
+      mountPath: /etc/ssl/internal-ca
+      readOnly: true
+
+  env:
+    SSL_CERT_FILE: /etc/ssl/internal-ca/ca.crt
+
   resources:
     requests:
       cpu: 100m
