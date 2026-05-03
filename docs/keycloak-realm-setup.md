@@ -15,7 +15,7 @@ This guide covers:
 
 ## Step 1 – Create the `netbird` Realm
 
-1. Log in to https://keycloak.netbird.kirk-pedersen.dk/admin
+1. Log in to https://keycloak.netbird.192.168.50.57.nip.io/admin
 2. Click the realm dropdown (top-left, shows "master") → **Create realm**
 3. Set:
    - **Realm name:** `netbird`
@@ -127,16 +127,18 @@ Navigate to: **Clients** → `netbird` → **Advanced** tab → **Advanced setti
 The discovery URL NetBird will use:
 
 ```
-https://keycloak.netbird.kirk-pedersen.dk/realms/netbird/.well-known/openid-configuration
+https://keycloak.netbird.192.168.50.57.nip.io/realms/netbird/.well-known/openid-configuration
 ```
 
 Verify it returns JSON:
 ```bash
-curl -s https://keycloak.netbird.kirk-pedersen.dk/realms/netbird/.well-known/openid-configuration | python3 -m json.tool | head -20
+curl -sk --cacert /tmp/netbird-ca.crt \
+  https://keycloak.netbird.192.168.50.57.nip.io/realms/netbird/.well-known/openid-configuration \
+  | python3 -m json.tool | head -20
 ```
 
 Key fields to confirm:
-- `issuer`: `https://keycloak.netbird.kirk-pedersen.dk/realms/netbird`
+- `issuer`: `https://keycloak.netbird.192.168.50.57.nip.io/realms/netbird`
 - `device_authorization_endpoint`: must be present
 - `token_endpoint`: must be present
 
@@ -165,30 +167,15 @@ Repeat for any additional test users.
 
 ## Step 6 – Wire Keycloak into NetBird
 
-Update `netbird-values.yaml` with the OIDC settings:
-
-```yaml
-management:
-  oidcConfigEndpoint: "https://keycloak.netbird.kirk-pedersen.dk/realms/netbird/.well-known/openid-configuration"
-
-dashboard:
-  authClientId: "netbird"
-  authAuthority: "https://keycloak.netbird.kirk-pedersen.dk/realms/netbird"
-  useAuth0: false
-```
-
-Apply the update:
-```bash
-helm upgrade netbird netbird/netbird \
-  -n netbird \
-  -f netbird-values.yaml
-```
+The OIDC settings are already configured in `config/netbird-values-local.yaml` —
+no manual update needed for the local PoC. This step applies when deploying to a
+different environment with a different Keycloak URL.
 
 ---
 
 ## Step 7 – Validate the Integration
 
-1. Open https://app.netbird.kirk-pedersen.dk
+1. Open https://app.netbird.192.168.50.57.nip.io
 2. You should be redirected to Keycloak login
 3. Log in with a test user
 4. You should land on the NetBird dashboard
@@ -206,11 +193,13 @@ netbird up --management-url https://api.netbird.example.com
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| Dashboard redirect loops | `proxy: edge` not set in Keycloak | Ensure Keycloak Helm value `proxy: edge` |
-| `invalid_client` error | Wrong Client ID | Confirm `authClientId: netbird` matches Keycloak client ID |
+| Dashboard redirect loops | `proxy: edge` not set in Keycloak | Ensure Keycloak Helm value `proxyHeaders: xforwarded` |
+| `invalid_client` error | Wrong Client ID | Confirm `AUTH_CLIENT_ID: netbird` matches Keycloak client ID |
 | Device auth code never works | Device Authorization Grant not enabled | Enable it on the client Capability Config tab |
 | `401` on all API calls after login | `aud` claim missing from token | Add Audience mapper to `netbird-dedicated` scope (Step 3a) |
 | `Invalid parameter: redirect_uri` on CLI enrollment | `http://localhost:53000` not in Valid Redirect URIs | Add `http://localhost:53000` to client Valid Redirect URIs |
+| `Invalid parameter: redirect_uri` on dashboard login | Redirect URI uses wrong domain (old placeholder) | Update Valid Redirect URIs and Web Origins to use your actual domain |
+| "Unauthenticated" error after successful Keycloak login | Web Origins wrong — browser blocked from exchanging auth code for token | Update Web Origins to `https://app.netbird.192.168.50.57.nip.io` (Step 2 Login Settings) |
 | Token missing email claim | `email` scope not assigned | Add `email` scope as default on the client |
-| CORS errors in browser | Web Origins not set | Add `https://app.netbird.kirk-pedersen.dk` to Web Origins |
-| Keycloak unreachable from NetBird pod | DNS issue in cluster | Verify `keycloak.keycloak.svc.cluster.local` resolves, or use external URL |
+| Keycloak unreachable from NetBird pod | DNS issue in cluster | Verify nip.io resolves correctly inside cluster; check `SSL_CERT_FILE` env on management pod |
+| Browser can't reach services after `netbird up` | NetBird intercepts DNS for its own domain | Add service hostnames to `/etc/hosts` — hosts file takes precedence over split-DNS |
