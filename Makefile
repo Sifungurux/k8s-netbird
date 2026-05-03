@@ -166,21 +166,6 @@ netbird-deploy:
 		--timeout 10m
 	@echo "✓ NetBird klar"
 	@echo "  Dashboard: https://app.netbird.$(LOCAL_IP).nip.io"
-	@echo ""
-	@echo "  Hent coturn LB IP og kør: make netbird-coturn-upgrade"
-
-.PHONY: netbird-coturn-upgrade
-netbird-coturn-upgrade:
-	@echo "→ Opdaterer coturn externalIP..."
-	@COTURN_IP=$$(kubectl get svc -n netbird -l app.kubernetes.io/component=coturn \
-		-o jsonpath='{.items[0].status.loadBalancer.ingress[0].ip}'); \
-	echo "  Coturn IP: $$COTURN_IP"; \
-	sed -i '' "s/externalIP: .*/externalIP: \"$$COTURN_IP\"/" config/netbird-values-local.yaml; \
-	helm upgrade netbird netbird/netbird \
-		--namespace netbird \
-		--values config/netbird-values-local.yaml \
-		--atomic --timeout 5m
-	@echo "✓ Coturn opdateret"
 
 # ──────────────────────────────────────────────────────────────────────────────
 #  Deploy i to faser (Keycloak realm skal oprettes manuelt imellem)
@@ -209,8 +194,8 @@ netbird-phase2: netbird-deploy
 	@echo "  Keycloak:   https://keycloak.netbird.$(LOCAL_IP).nip.io/admin"
 	@echo ""
 	@echo "  Næste trin:"
-	@echo "  1. Kør: make netbird-coturn-upgrade"
-	@echo "  2. Åbn dashboard og log ind"
+	@echo "  1. Åbn dashboard og log ind"
+	@echo "  2. Enroll peers: netbird up --management-url https://api.netbird.$(LOCAL_IP).nip.io"
 
 # Hurtig genvej — kører begge faser uden pause (kun hvis realm allerede eksisterer)
 .PHONY: netbird-all
