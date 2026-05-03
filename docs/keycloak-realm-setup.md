@@ -57,11 +57,15 @@ Click **Next**
 ### Login Settings tab
 | Field | Value |
 |---|---|
-| Root URL | `https://app.netbird.kirk-pedersen.dk` |
-| Home URL | `https://app.netbird.kirk-pedersen.dk` |
-| Valid redirect URIs | `https://app.netbird.kirk-pedersen.dk/*` |
-| Valid post logout redirect URIs | `https://app.netbird.kirk-pedersen.dk/*` |
-| Web origins | `https://app.netbird.kirk-pedersen.dk` |
+| Root URL | `https://app.netbird.192.168.50.57.nip.io` |
+| Home URL | `https://app.netbird.192.168.50.57.nip.io` |
+| Valid redirect URIs | `https://app.netbird.192.168.50.57.nip.io/*` and `http://localhost:53000` |
+| Valid post logout redirect URIs | `https://app.netbird.192.168.50.57.nip.io/*` |
+| Web origins | `https://app.netbird.192.168.50.57.nip.io` |
+
+> **Note:** `http://localhost:53000` is required for CLI peer enrollment (`netbird up`).
+> The netbird CLI uses the PKCE flow which opens a browser and listens on this local port for
+> the OAuth callback. Without it, Keycloak rejects the auth request with "Invalid parameter: redirect_uri".
 
 Click **Save**
 
@@ -206,6 +210,7 @@ netbird up --management-url https://api.netbird.example.com
 | `invalid_client` error | Wrong Client ID | Confirm `authClientId: netbird` matches Keycloak client ID |
 | Device auth code never works | Device Authorization Grant not enabled | Enable it on the client Capability Config tab |
 | `401` on all API calls after login | `aud` claim missing from token | Add Audience mapper to `netbird-dedicated` scope (Step 3a) |
+| `Invalid parameter: redirect_uri` on CLI enrollment | `http://localhost:53000` not in Valid Redirect URIs | Add `http://localhost:53000` to client Valid Redirect URIs |
 | Token missing email claim | `email` scope not assigned | Add `email` scope as default on the client |
 | CORS errors in browser | Web Origins not set | Add `https://app.netbird.kirk-pedersen.dk` to Web Origins |
 | Keycloak unreachable from NetBird pod | DNS issue in cluster | Verify `keycloak.keycloak.svc.cluster.local` resolves, or use external URL |
