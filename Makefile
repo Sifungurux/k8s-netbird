@@ -127,6 +127,15 @@ netbird-pki:
 		-n cert-manager --timeout=60s
 	@echo "✓ PKI klar — ClusterIssuer: netbird-ca-issuer"
 
+.PHONY: netbird-ca-copy
+netbird-ca-copy:
+	@echo "→ Kopierer CA cert til netbird namespace..."
+	kubectl create namespace netbird --dry-run=client -o yaml | kubectl apply -f -
+	kubectl get secret netbird-root-ca-secret -n cert-manager -o json \
+		| jq '.metadata.namespace = "netbird" | del(.metadata.resourceVersion, .metadata.uid, .metadata.creationTimestamp)' \
+		| kubectl apply -f -
+	@echo "✓ netbird-root-ca-secret tilgængelig i netbird namespace"
+
 # ──────────────────────────────────────────────────────────────────────────────
 #  Keycloak
 # ──────────────────────────────────────────────────────────────────────────────
@@ -177,7 +186,7 @@ netbird-coturn-upgrade:
 #  Deploy alt i rækkefølge
 # ──────────────────────────────────────────────────────────────────────────────
 .PHONY: netbird-all
-netbird-all: netbird-repos netbird-infra netbird-pki netbird-keycloak netbird-deploy
+netbird-all: netbird-repos netbird-infra netbird-pki netbird-ca-copy netbird-keycloak netbird-deploy
 	@echo ""
 	@echo "✓ NetBird PoC deployed!"
 	@echo ""
