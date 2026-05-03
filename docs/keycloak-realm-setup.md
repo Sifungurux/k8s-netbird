@@ -67,28 +67,54 @@ Click **Save**
 
 ---
 
-## Step 3 – Configure Token Settings
+## Step 3 – Configure Token Claims
 
-Navigate to: **Clients** → `netbird` → **Settings** tab → scroll to **Access settings**
+### 3a – Add Audience Mapper (required)
 
-Then go to the **Advanced** tab → **Advanced settings** section:
+This is the most commonly missed step. By default, Keycloak does **not** include the
+client ID in the access token's `aud` (audience) claim for public clients. NetBird
+management validates the `aud` claim on every API request — if it's missing, all API
+calls return 401 even though login succeeds.
+
+**Why:** The `aud` claim tells the resource server (NetBird management) that the token
+was intended for it. Without it, management rejects the token as not addressed to it,
+even if the signature and issuer are valid. This is standard OAuth2 audience validation.
+
+Navigate to: **Clients** → `netbird` → **Client scopes** tab → click `netbird-dedicated`
+→ **Add mapper** → **By configuration** → **Audience**
 
 | Field | Value |
 |---|---|
-| Access Token Lifespan | 5 minutes (default is fine) |
-| Device Authorization Grant Lifetime | 600 seconds (10 min, gives users time to auth) |
+| Name | `netbird-audience` |
+| Included Client Audience | `netbird` |
+| Add to access token | **ON** |
+| Add to ID token | OFF |
 
-### Ensure `email` scope is included
+Click **Save**.
+
+After this, every access token issued to the `netbird` client will contain `"aud": ["netbird"]`
+and management will accept it.
+
+### 3b – Ensure `email` and `profile` scopes are included
 
 Navigate to: **Clients** → `netbird` → **Client scopes** tab
 
 You should see `email` and `profile` in the **Assigned default client scopes** list.
-If not, click **Add client scope** and add both `email` and `profile` as **Default**.
+If not, click **Add client scope** and add both as **Default**.
 
-NetBird requires the following claims in the ID token:
+NetBird requires the following claims:
 - `sub` (subject/user ID) — always present
 - `email` — from `email` scope
 - `name` — from `profile` scope
+
+### 3c – Advanced token settings (optional)
+
+Navigate to: **Clients** → `netbird` → **Advanced** tab → **Advanced settings**:
+
+| Field | Value |
+|---|---|
+| Access Token Lifespan | 5 minutes (default is fine) |
+| Device Authorization Grant Lifetime | 600 seconds (10 min — gives users time to auth on CLI) |
 
 ---
 
@@ -179,6 +205,7 @@ netbird up --management-url https://api.netbird.example.com
 | Dashboard redirect loops | `proxy: edge` not set in Keycloak | Ensure Keycloak Helm value `proxy: edge` |
 | `invalid_client` error | Wrong Client ID | Confirm `authClientId: netbird` matches Keycloak client ID |
 | Device auth code never works | Device Authorization Grant not enabled | Enable it on the client Capability Config tab |
+| `401` on all API calls after login | `aud` claim missing from token | Add Audience mapper to `netbird-dedicated` scope (Step 3a) |
 | Token missing email claim | `email` scope not assigned | Add `email` scope as default on the client |
 | CORS errors in browser | Web Origins not set | Add `https://app.netbird.kirk-pedersen.dk` to Web Origins |
 | Keycloak unreachable from NetBird pod | DNS issue in cluster | Verify `keycloak.keycloak.svc.cluster.local` resolves, or use external URL |
