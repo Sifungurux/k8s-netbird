@@ -183,10 +183,25 @@ netbird-coturn-upgrade:
 	@echo "✓ Coturn opdateret"
 
 # ──────────────────────────────────────────────────────────────────────────────
-#  Deploy alt i rækkefølge
+#  Deploy i to faser (Keycloak realm skal oprettes manuelt imellem)
 # ──────────────────────────────────────────────────────────────────────────────
-.PHONY: netbird-all
-netbird-all: netbird-repos netbird-infra netbird-pki netbird-ca-copy netbird-keycloak netbird-deploy
+
+# Fase 1: infrastruktur + Keycloak — stop her og opret realm manuelt
+.PHONY: netbird-phase1
+netbird-phase1: netbird-repos netbird-infra netbird-pki netbird-ca-copy netbird-keycloak
+	@echo ""
+	@echo "✓ Fase 1 færdig — infrastruktur og Keycloak er oppe"
+	@echo ""
+	@echo "  !! MANUEL HANDLING PÅKRÆVET !!"
+	@echo "  Opret 'netbird' realm og client i Keycloak før fase 2:"
+	@echo "  Keycloak admin: https://keycloak.netbird.$(LOCAL_IP).nip.io/admin"
+	@echo "  Følg: docs/keycloak-realm-setup.md"
+	@echo ""
+	@echo "  Når realm er oprettet: make netbird-phase2"
+
+# Fase 2: NetBird — kræver at Keycloak realm 'netbird' allerede eksisterer
+.PHONY: netbird-phase2
+netbird-phase2: netbird-deploy
 	@echo ""
 	@echo "✓ NetBird PoC deployed!"
 	@echo ""
@@ -194,6 +209,9 @@ netbird-all: netbird-repos netbird-infra netbird-pki netbird-ca-copy netbird-key
 	@echo "  Keycloak:   https://keycloak.netbird.$(LOCAL_IP).nip.io/admin"
 	@echo ""
 	@echo "  Næste trin:"
-	@echo "  1. Følg docs/keycloak-realm-setup.md — opret 'netbird' realm og client"
-	@echo "  2. Kør: make netbird-coturn-upgrade"
-	@echo "  3. Åbn dashboard og log ind"
+	@echo "  1. Kør: make netbird-coturn-upgrade"
+	@echo "  2. Åbn dashboard og log ind"
+
+# Hurtig genvej — kører begge faser uden pause (kun hvis realm allerede eksisterer)
+.PHONY: netbird-all
+netbird-all: netbird-phase1 netbird-phase2
