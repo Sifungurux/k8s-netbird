@@ -212,6 +212,51 @@ dashboard:
         hosts:
           - app.netbird.192.168.50.57.nip.io
 
+# gRPC IngressRoutes — standard Kubernetes Ingress does not support gRPC (HTTP/2).
+# Traefik requires scheme: h2c to forward gRPC traffic to the backend.
+# These routes handle the gRPC paths for management and signal alongside
+# the existing standard Ingress which handles REST and TLS cert issuance.
+extraManifests:
+  - apiVersion: traefik.io/v1alpha1
+    kind: IngressRoute
+    metadata:
+      name: netbird-management-grpc
+      namespace: netbird
+    spec:
+      entryPoints:
+        - websecure
+      routes:
+        - kind: Rule
+          match: Host(`api.netbird.192.168.50.57.nip.io`) && PathPrefix(`/management`)
+          services:
+            - name: netbird-management
+              port: 80
+              scheme: h2c
+        - kind: Rule
+          match: Host(`api.netbird.192.168.50.57.nip.io`) && PathPrefix(`/api`)
+          services:
+            - name: netbird-management
+              port: 80
+      tls:
+        secretName: netbird-management-tls
+  - apiVersion: traefik.io/v1alpha1
+    kind: IngressRoute
+    metadata:
+      name: netbird-signal-grpc
+      namespace: netbird
+    spec:
+      entryPoints:
+        - websecure
+      routes:
+        - kind: Rule
+          match: Host(`signal.netbird.192.168.50.57.nip.io`) && PathPrefix(`/signalexchange`)
+          services:
+            - name: netbird-signal
+              port: 80
+              scheme: h2c
+      tls:
+        secretName: netbird-signal-tls
+
 relay:
   enabled: true
   env:
