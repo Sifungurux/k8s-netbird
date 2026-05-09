@@ -237,6 +237,11 @@ extraManifests:
           services:
             - name: netbird-management
               port: 80
+        - kind: Rule
+          match: Host(`api.netbird.192.168.50.57.nip.io`) && PathPrefix(`/relay`)
+          services:
+            - name: netbird-relay
+              port: 33080
       tls:
         secretName: netbird-management-tls
   - apiVersion: traefik.io/v1alpha1

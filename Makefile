@@ -162,7 +162,7 @@ netbird-deploy:
 		--namespace netbird \
 		--create-namespace \
 		--values config/netbird-values-local.yaml \
-		--atomic \
+		--rollback-on-failure \
 		--timeout 10m
 	@echo "✓ NetBird klar"
 	@echo "  Dashboard: https://app.netbird.$(LOCAL_IP).nip.io"
