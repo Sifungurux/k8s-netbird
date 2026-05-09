@@ -142,6 +142,8 @@ netbird-ca-copy:
 .PHONY: netbird-keycloak
 netbird-keycloak:
 	@echo "→ Deployer Keycloak..."
+	kubectl create namespace keycloak --dry-run=client -o yaml | kubectl apply -f -
+	kubectl apply -f manifests/keycloak-pvc.yaml
 	helm upgrade --install keycloak codecentric/keycloakx \
 		--namespace keycloak \
 		--create-namespace \
