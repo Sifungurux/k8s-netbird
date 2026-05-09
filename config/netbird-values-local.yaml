@@ -14,7 +14,7 @@ management:
       - --log-level=info
       - --disable-anonymous-metrics=true
       - --single-account-mode-domain=netbird.192.168.50.57.nip.io
-      - --dns-domain=netbird.192.168.50.57.nip.io
+      - --dns-domain=nb.internal
 
   # NOTE: DataStoreEncryptionKey and Relay.Secret below are TEST VALUES
   # generated with: openssl rand -base64 32 / openssl rand -base64 24
