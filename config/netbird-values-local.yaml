@@ -59,7 +59,7 @@ management:
         "AuthUserIDClaim": "",
         "AuthKeysLocation": "https://keycloak.netbird.192.168.50.57.nip.io/realms/netbird/protocol/openid-connect/certs",
         "OIDCConfigEndpoint": "https://keycloak.netbird.192.168.50.57.nip.io/realms/netbird/.well-known/openid-configuration",
-        "IdpSignKeyRefreshEnabled": false
+        "IdpSignKeyRefreshEnabled": true
       },
       "IdpManagerConfig": {
         "ManagerType": "none"
