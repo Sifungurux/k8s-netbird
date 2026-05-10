@@ -22,6 +22,10 @@ ports:
     nodeFilters: ["loadbalancer"]
   - port: 3478:3478/udp
     nodeFilters: ["loadbalancer"]
+  - port: 5353:53/udp
+    nodeFilters: ["loadbalancer"]
+  - port: 5353:53/tcp
+    nodeFilters: ["loadbalancer"]
 
 # Traefik og ServiceLB er bevidst IKKE deaktiveret her
 # (modsat Sigstore-opsætningen som bruger ingress-nginx)
