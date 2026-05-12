@@ -10,7 +10,7 @@ Active PoC — Phase 1 (Keycloak) deployed, manual Keycloak realm setup is the c
 
 - **Local IP**: `192.168.50.57` — update `Makefile` and `config/*-local.yaml` if this changes
 - **Ingress**: Traefik (TLS terminated at ingress — Keycloak needs `proxy: edge`)
-- **TLS local**: `local-root-ca-secret` from `cert-manager` ns, copied to `netbird` ns via `make netbird-ca-copy`
+- **TLS local**: `netbird-root-ca-secret` from `cert-manager` ns, copied to `netbird` ns via `make netbird-ca-copy`
 - **Prerequisite**: `k8s-infra` repo must be deployed first (provides cluster, cert-manager, PKI)
 - **Keycloak chart**: `codecentric/keycloakx` — NOT bitnami
 - **Datastore**: SQLite for PoC only — PostgreSQL migration needed before production

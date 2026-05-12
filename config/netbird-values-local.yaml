@@ -115,7 +115,7 @@ management:
   volumes:
     - name: internal-ca
       secret:
-        secretName: local-root-ca-secret
+        secretName: netbird-root-ca-secret
         items:
           - key: tls.crt
             path: ca.crt
@@ -140,7 +140,7 @@ management:
     enabled: true
     ingressClassName: traefik
     annotations:
-      cert-manager.io/cluster-issuer: local-ca-issuer
+      cert-manager.io/cluster-issuer: netbird-ca-issuer
       traefik.ingress.kubernetes.io/router.entrypoints: websecure
       traefik.ingress.kubernetes.io/router.tls: "true"
     hosts:
@@ -167,7 +167,7 @@ signal:
     enabled: true
     ingressClassName: traefik
     annotations:
-      cert-manager.io/cluster-issuer: local-ca-issuer
+      cert-manager.io/cluster-issuer: netbird-ca-issuer
       traefik.ingress.kubernetes.io/router.entrypoints: websecure
       traefik.ingress.kubernetes.io/router.tls: "true"
     hosts:
@@ -202,7 +202,7 @@ dashboard:
     enabled: true
     ingressClassName: traefik
     annotations:
-      cert-manager.io/cluster-issuer: local-ca-issuer
+      cert-manager.io/cluster-issuer: netbird-ca-issuer
       traefik.ingress.kubernetes.io/router.entrypoints: websecure
       traefik.ingress.kubernetes.io/router.tls: "true"
     hosts:

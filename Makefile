@@ -52,7 +52,7 @@ netbird-repos:
 netbird-ca-copy:
 	@echo "→ Copying CA cert to netbird namespace..."
 	kubectl create namespace netbird --dry-run=client -o yaml | kubectl apply -f -
-	kubectl get secret local-root-ca-secret -n cert-manager -o json \
+	kubectl get secret netbird-root-ca-secret -n cert-manager -o json \
 		| jq '.metadata.namespace = "netbird" | del(.metadata.resourceVersion, .metadata.uid, .metadata.creationTimestamp)' \
 		| kubectl apply -f -
 	@echo "✓ local-root-ca-secret available in netbird namespace"
