@@ -24,7 +24,7 @@ extraEnv: |
   - name: KC_DB
     value: postgres
   - name: KC_DB_URL
-    value: jdbc:postgresql://postgres-keycloak:5432/keycloak
+    value: jdbc:postgresql://keycloak-postgresql:5432/keycloak
   - name: KC_DB_USERNAME
     value: keycloak
   - name: KC_DB_PASSWORD
@@ -57,3 +57,16 @@ ingress:
     - hosts:
         - keycloak.netbird.kirk-pedersen.dk
       secretName: keycloak-tls
+
+# Bundled PostgreSQL subchart (Bitnami)
+# Service is exposed as keycloak-postgresql:5432 — matches KC_DB_URL above
+postgresql:
+  enabled: true
+  auth:
+    username: keycloak
+    password: CHANGE_ME_DB_PASSWORD   # keep in sync with KC_DB_PASSWORD above
+    database: keycloak
+  primary:
+    persistence:
+      enabled: true
+      size: 2Gi

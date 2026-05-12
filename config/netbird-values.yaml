@@ -4,7 +4,7 @@
 # TLS: cert-manager (Let's Encrypt)
 #
 # Prerequisites:
-#   helm repo add netbird https://netbird.io/helm
+#   helm repo add netbird https://netbirdio.github.io/helms
 #   helm repo update
 #
 # Install:

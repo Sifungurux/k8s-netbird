@@ -16,9 +16,12 @@ management:
       - --single-account-mode-domain=netbird.192.168.50.57.nip.io
       - --dns-domain=nb.internal
 
-  # NOTE: DataStoreEncryptionKey and Relay.Secret below are TEST VALUES
-  # generated with: openssl rand -base64 32 / openssl rand -base64 24
-  # Regenerate for production — see docs/netbird-secrets.md
+  # WARNING: The secrets below are TEST VALUES for local PoC only.
+  # DO NOT use these values in production — they are committed to version control
+  # and must be treated as compromised. Regenerate with:
+  #   DataStoreEncryptionKey: openssl rand -base64 32
+  #   Relay.Secret / NB_AUTH_SECRET: openssl rand -base64 24
+  # For production, store secrets in Kubernetes Secrets — see docs/netbird-secrets.md
   configmap: |-
     {
       "Stuns": [
@@ -38,7 +41,7 @@ management:
             "Proto": "udp",
             "URI": "turn:192.168.50.57:3478",
             "Username": "netbird",
-            "Password": "CHANGE_ME_STRONG_PASSWORD"
+            "Password": "VtVZusRvlquGBHh++NRyHzzz"
           }
         ]
       },
@@ -49,7 +52,7 @@ management:
         "Password": ""
       },
       "Datadir": "/var/lib/netbird/",
-      "DataStoreEncryptionKey": "o188kFnz7nybaesCk3XNoNJwQpsPJqAyuOYMm7psO9w=",
+      "DataStoreEncryptionKey": "lCQPrDK0Vyr1jCcb6qVJHdFjXBlXJCzAIy485a6/o/U=",
       "HttpConfig": {
         "LetsEncryptDomain": "",
         "CertFile": "",
@@ -96,7 +99,7 @@ management:
       "Relay": {
         "Addresses": ["rels://api.netbird.192.168.50.57.nip.io:443/relay"],
         "CredentialsTTL": "24h",
-        "Secret": "eYoFsGOa22x5hpIECFK8Qt6tRmZ8e2OJ"
+        "Secret": "hwKu8wsOfV64EYzgLE6CGBZUiB8w/CTN"
       },
       "StoreConfig": {
         "Engine": "sqlite"
@@ -268,10 +271,10 @@ relay:
     NB_LOG_LEVEL: info
     NB_LISTEN_ADDRESS: ":33080"
     NB_EXPOSED_ADDRESS: "rels://api.netbird.192.168.50.57.nip.io:443/relay"
-    # TEST VALUE — generated with: openssl rand -base64 24
-    # Must match Relay.Secret in management configmap above
-    # Regenerate for production — see docs/netbird-secrets.md
-    NB_AUTH_SECRET: "eYoFsGOa22x5hpIECFK8Qt6tRmZ8e2OJ"
+    # WARNING: TEST VALUE — DO NOT use in production (committed to version control).
+    # Must match Relay.Secret in management configmap above.
+    # Regenerate: openssl rand -base64 24 — see docs/netbird-secrets.md
+    NB_AUTH_SECRET: "hwKu8wsOfV64EYzgLE6CGBZUiB8w/CTN"
   resources:
     requests:
       cpu: 50m

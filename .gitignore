@@ -7,6 +7,8 @@ config/*-secret.yaml
 # Lokale overrides med rigtige passwords
 config/netbird-values-prod.yaml
 config/keycloak-values-prod.yaml
+config/netbird-values-local.yaml
+config/keycloak-values-local.yaml
 
 # kubeconfig
 kubeconfig
@@ -14,3 +16,7 @@ kubeconfig
 
 # macOS
 .DS_Store
+
+# claude-flow working files
+.swarm/
+ruvector.db
