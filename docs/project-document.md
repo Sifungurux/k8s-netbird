@@ -86,7 +86,46 @@ All of these must be reachable by external peers:
 
 ---
 
-## 4. Phase Plan
+## 4. Zero-Trust Access Model
+
+NetBird implements a zero-trust network access (ZTNA) model. There is no concept of "inside the network" — access is peer-to-peer, policy-driven, and tied to whether a client is actively connected.
+
+### 4.1 How It Works
+
+Every enrolled machine (peer) gets a WireGuard IP in the `100.x.x.x` range. Services on enrolled servers only need to be reachable on that IP — not on the public internet.
+
+| State | Result |
+| --- | --- |
+| Client connected to NetBird + in the right policy group | Can reach enrolled servers via their WireGuard IP |
+| Client disconnects | WireGuard tunnel drops — no route to servers exists |
+| Client connected but not in the right group | No route — policy blocks access |
+
+### 4.2 What to Do on the Server Side
+
+1. Enroll the server as a NetBird peer — it gets a WireGuard IP (e.g. `100.64.0.2`)
+2. Firewall the server so services only accept connections from the NetBird subnet (`100.64.0.0/10`), or bind services to the WireGuard interface only
+3. Keep public internet ports closed — services are only reachable through the mesh
+
+### 4.3 Controlling Access with Policies (Phase 4)
+
+Policies define which peers can reach which peers. The building blocks are:
+
+- **Groups** — logical collections of peers (e.g. `developers`, `servers`, `k8s-pods`)
+- **Policies** — rules that allow traffic between groups (e.g. `developers` → `servers` on port 22/443)
+
+A peer not in the right group has no route even if they are connected to the mesh. The guarantee is: **connected + correct group = access. Anything else = no access.**
+
+### 4.4 Peer Types
+
+| Peer | Enrollment | Typical Use |
+| --- | --- | --- |
+| macOS / Windows workstation | `netbird up --management-url <url>` | Developer access |
+| Debian / Linux server | `netbird up --management-url <url>` | Service host — firewall to WireGuard IP only |
+| Kubernetes pod | Sidecar or DaemonSet | Service mesh — pod-to-pod access across clusters |
+
+---
+
+## 5. Phase Plan
 
 | Phase | Title | Objective | Status |
 | --- | --- | --- | --- |
