@@ -192,7 +192,7 @@ Expected: `200`.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add -A test config manifests docs Makefile
+git add test   # the git rm deletions are already staged
 git commit -m "Replace Keycloak/coturn PoC with a rack-like k3d test cluster"
 ```
 
@@ -887,6 +887,8 @@ Expected:
 - The BackendTrafficPolicy shows `True`. If it prints anything else, `kubectl -n netbird describe btp netbird-streams` names the rejected field.
 - `verify.sh` prints `ALL OK`.
 
+If the certificate sticks on "waiting for DNS propagation", the LAN resolver (DNS filtering) is answering the TXT self-check. Re-run the cert-manager helm install in `test/up.sh` with `--set 'extraArgs={--dns01-recursive-nameservers=1.1.1.1:53,--dns01-recursive-nameservers-only}'`, and add the same `extraArgs` to `values` in `homelab/clusters/rack/releases/cert-manager.yaml` in Task 7.
+
 - [ ] **Step 5: Switch the test cluster to the prod issuer and verify with real TLS**
 
 ```bash
@@ -996,9 +998,12 @@ spec:
                 secretKeyRef:
                   name: netbird-routing-peer
                   key: setup-key
+          # ponytail: privileged is the smallest thing that works for one pod --
+          # it needs /dev/net/tun and to set net.ipv4.ip_forward for masquerade,
+          # which capabilities alone do not grant on containerd. Narrow it to a
+          # hostPath /dev/net/tun + allowed sysctl if this pod ever multiplies.
           securityContext:
-            capabilities:
-              add: ["NET_ADMIN", "SYS_ADMIN", "SYS_RESOURCE"]
+            privileged: true
           resources:
             requests:
               cpu: 20m
@@ -1031,6 +1036,7 @@ On macOS the k3d Docker network is not reachable from the host, which makes it a
 NB_SETUP_KEY='<key from step 1>' scripts/secrets.sh routing-peer
 test/render.sh | kubectl apply --server-side -f -
 kubectl -n netbird rollout status deploy/netbird-routing-peer --timeout=120s
+kubectl -n netbird logs deploy/netbird-routing-peer | grep -iE '(error|fail).*(/dev/net/tun|ip_forward)|operation not permitted' ; echo "exit=$?"   # expect exit=1: no device/sysctl errors
 DOCKER_HOST="unix://${HOME}/.colima/netbird/docker.sock" \
   docker network inspect k3d-netbird-test -f '{{(index .IPAM.Config 0).Subnet}}'
 kubectl get node k3d-netbird-test-server-0 -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}'; echo
@@ -1042,7 +1048,7 @@ In the dashboard:
 3. Add a Routing Peer, `routing-peer-test`, with Masquerade on.
 4. Add a Policy: All → `k3d-lan`, all protocols.
 
-- [ ] **Step 5: Enroll the laptop and a Lima VM**
+- [ ] **Step 5: Enroll the laptop and a Lima VM (manual, user -- browser login)**
 
 ```bash
 netbird profile add nb-test
@@ -1079,9 +1085,10 @@ Expected:
 
 - [ ] **Step 7: Long-idle stream check**
 
+Start this right after Step 6's server restart, and touch nothing for 20 minutes. Do not use a foreground `sleep`: agent shells cap foreground commands at 10 minutes. Come back later, or wait with a background job.
+
 ```bash
-kubectl -n netbird logs deploy/netbird-server --since=1s >/dev/null   # mark time
-sleep 1200
+kubectl -n netbird get pod -l app=netbird-server -o jsonpath='{.items[0].status.startTime}'; echo   # must be >= 20 min ago
 kubectl -n netbird logs deploy/netbird-server --since=20m | grep -ciE 'sync stream closed|peer disconnected|context canceled'
 netbird status --profile nb-test | grep -E 'Management|Signal'
 ```
@@ -1148,7 +1155,7 @@ Remove every Keycloak, coturn and nip.io reference. In `docs/project-document.md
 - [ ] **Step 3: Verify that no stale references remain**
 
 ```bash
-grep -rniE 'keycloak|coturn|nip\.io|traefik' --include='*.md' --include='*.yaml' --include='Makefile' . | grep -v 'docs/superpowers\|project-document.md' ; echo "exit=$?"
+grep -rniE 'keycloak|coturn|nip\.io' --include='*.md' --include='*.yaml' --include='Makefile' . | grep -v 'docs/superpowers\|project-document.md' ; echo "exit=$?"
 make render >/dev/null && echo render-ok
 ```
 
@@ -1390,6 +1397,10 @@ cluster -- see k8s-netbird `docs/test-log.md`.
    scripts/secrets.sh server netbird.nordkeel.dk   # then back it up to 1Password
 5. Merge this branch; `flux get kustomizations -A` shows netbird Ready,
    `kubectl -n netbird get certificate` Ready, `kubectl -n netbird logs deploy/cloudflare-ddns` shows the record set.
+   Fixed IPs landed (the router forwards point at these):
+   `kubectl get svc -A | grep -E '192\.168\.150\.4[01]'` shows the Envoy Service on .40 and netbird-stun on .41.
+   Timeouts accepted by the rack's Envoy Gateway (proves the step-1 version is new enough):
+   `kubectl -n netbird get btp netbird-streams -o jsonpath='{.status.ancestors[0].conditions[?(@.type=="Accepted")].status}'` prints True.
 6. Router: forward 443/tcp -> 192.168.150.40 and 3478/udp -> 192.168.150.41.
 7. NAT loopback: from the LAN, `curl -sS https://netbird.nordkeel.dk/` must work.
    If it times out, the router does not hairpin -- override
@@ -1397,6 +1408,8 @@ cluster -- see k8s-netbird `docs/test-log.md`.
 8. Dashboard: claim owner, create a reusable+ephemeral setup key `routing-peer-rack`,
    then `NB_SETUP_KEY=... scripts/secrets.sh routing-peer`. Networks: `rack-lan`,
    resource 192.168.150.0/24, routing peer `routing-peer-rack`, masquerade, policy owner -> rack-lan.
+   `kubectl -n netbird logs deploy/netbird-routing-peer | grep -i connected` -- this pod resolves
+   netbird.nordkeel.dk to the PUBLIC IP, so if the router does not hairpin it is the first thing to fail.
 9. Prove it from outside: phone on mobile data enrolls and opens a 192.168.150.x
    service; laptop off-LAN runs `kubectl --context rack get nodes`.
 ```

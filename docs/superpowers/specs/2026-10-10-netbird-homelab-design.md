@@ -58,7 +58,7 @@ k8s-netbird/
 
 homelab/clusters/rack/
   sources/netbird.yaml       GitRepository -> k8s-netbird, pinned to a commit
-  releases/netbird.yaml      Flux Kustomization, path ./deploy, dependsOn cert-manager,
+  releases/netbird.yaml      Flux Kustomization, path ./deploy (no dependsOn: it cannot reference a HelmRelease; it retries until CRDs exist),
                              postBuild.substitute = rack values
   letsencrypt-issuers.yaml   LE staging + prod ClusterIssuers (Cloudflare DNS-01)
   cloudflare-ddns.yaml       DDNS updater for netbird.nordkeel.dk
@@ -147,7 +147,7 @@ Pass criteria, in order:
    WebSocket relay through the Gateway.
 5. The management/signal streams survive > 15 min idle, with no reconnect storm
    in the server log. This proves the timeout handling.
-6. Routing peer: the Lima VM reaches a laptop-LAN address through the route.
+6. Routing peer: the laptop reaches the k3d Docker network (not routable from the macOS host) through the route. The Lima VM could reach the laptop LAN without NetBird, so that would prove nothing.
 7. `kubectl delete pod` on the server leaves peers and users intact (PVC).
 
 ### Rack go-live
