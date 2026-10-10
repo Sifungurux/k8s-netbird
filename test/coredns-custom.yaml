@@ -1,0 +1,26 @@
+# Test cluster only. The home router's DNS-rebind protection strips the
+# public A record (netbird-test -> a private IP) from LAN answers, and
+# CoreDNS forwards upstream to that router -- so the routing-peer pod
+# could not find the management server. k3s imports *.server keys from
+# this ConfigMap as extra CoreDNS server blocks; this one answers the
+# test hostname locally and leaves every other name alone.
+#
+# Must match the laptop's LAN IP (`ipconfig getifaddr en0`) and the
+# Cloudflare A record; update both if DHCP hands out a new address.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns-custom
+  namespace: kube-system
+data:
+  netbird-test.server: |
+    netbird-test.nordkeel.dk:53 {
+      hosts {
+        192.168.0.18 netbird-test.nordkeel.dk
+        fallthrough
+      }
+      # Everything else in this zone (SOA, the _acme-challenge TXT that
+      # cert-manager checks) must still come from real DNS -- without
+      # this the block answers SERVFAIL and DNS-01 never completes.
+      forward . /etc/resolv.conf
+    }
