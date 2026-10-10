@@ -7,8 +7,7 @@ status: planning
 
 # NetBird PoC — Project Document
 
-> **Status:** Planning / Idea stage — nothing deployed yet.
-> This document captures architecture decisions, configuration, and findings as the PoC progresses.
+> **Status:** superseded by docs/superpowers/specs/2026-10-10-netbird-homelab-design.md (combined server, embedded IdP, Envoy Gateway).
 
 **FigJam arkitekturdiagram:** [NetBird PoC — Kubernetes Architecture](https://www.figma.com/board/5XHEJ33LbTj1fEycrWgMIt)
 

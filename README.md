@@ -1,57 +1,76 @@
 # k8s-netbird
 
-Self-hosted [NetBird](https://netbird.io) zero-trust network on Kubernetes.
-WireGuard-based peer-to-peer mesh with Keycloak OIDC, deployed via Helm.
+Self-hosted [NetBird](https://netbird.io) for the homelab: remote access to
+the rack LAN from anywhere over a WireGuard mesh.
 
-## Stack
+- **Server:** the combined `netbird-server` image (management, signal,
+  relay and STUN in one container).
+- **Login:** NetBird's embedded IdP.
+- **Ingress:** Envoy Gateway.
+- **TLS:** a Let's Encrypt certificate from cert-manager, validated by
+  Cloudflare DNS-01.
 
-| Component | Role |
-|---|---|
-| NetBird Management | Peer registry + REST/gRPC API |
-| NetBird Signal | WireGuard peer signaling |
-| NetBird Dashboard | Web UI |
-| Coturn | TURN relay for NAT traversal |
-| Keycloak | OIDC identity provider |
-| cert-manager | TLS certificate lifecycle |
+Design: `docs/superpowers/specs/2026-10-10-netbird-homelab-design.md`.
+Test results: `docs/test-log.md`.
 
-## Quick start (lokal)
-
-```bash
-# Forudsætninger: colima, k3d, helm, kubectl
-make netbird-start   # Start Colima + k3d cluster
-make netbird-all     # Deploy hele stacken
-```
-
-Følg derefter `docs/keycloak-realm-setup.md` for at opsætte `netbird` realm og OIDC client.
-
-## Endpoints (lokal — nip.io)
-
-| Service | URL |
-|---|---|
-| Dashboard | https://app.netbird.192.168.50.57.nip.io |
-| Management API | https://api.netbird.192.168.50.57.nip.io |
-| Signal | https://signal.netbird.192.168.50.57.nip.io |
-| Keycloak | https://keycloak.netbird.192.168.50.57.nip.io |
-
-> IP opdateres i `Makefile` og `config/*-local.yaml` hvis lokal IP skifter.
-
-## Filer
+## Layout
 
 ```
-config/
-  k3d-netbird.yaml           k3d cluster config
-  netbird-values-local.yaml  NetBird Helm values (lokal)
-  netbird-values.yaml        NetBird Helm values (produktion — netbird.kirk-pedersen.dk)
-  keycloak-values-local.yaml Keycloak Helm values (lokal)
-  keycloak-values.yaml       Keycloak Helm values (produktion)
-
-docs/
-  project-document.md        Arkitekturbeslutninger, fase-plan, open questions
-  keycloak-realm-setup.md    Manuel guide til Keycloak realm + OIDC client
-
-Makefile                     Lifecycle targets
+deploy/               kustomize base -- the only thing the rack consumes
+  server.yaml         netbird-server, SQLite PVC, http + h2c Services
+  stun-service.yaml   3478/udp LoadBalancer
+  dashboard.yaml
+  gateway.yaml        Gateway, Certificate, HTTPRoute, stream timeouts
+  routing-peer.yaml   in-cluster peer that routes the LAN into the mesh
+scripts/secrets.sh    Secrets that never go in git (current kubectl context)
+test/                 k3d test cluster: up/down, vars, render, verify
 ```
 
-## FigJam arkitekturdiagram
+Per-cluster values are four variables, substituted by Flux `postBuild` on
+the rack and by `flux envsubst --strict` in `test/render.sh`:
 
-[NetBird PoC — Kubernetes Architecture](https://www.figma.com/board/5XHEJ33LbTj1fEycrWgMIt)
+| Variable | Test | Rack |
+|---|---|---|
+| `NETBIRD_DOMAIN` | `netbird-test.nordkeel.dk` | `netbird.nordkeel.dk` |
+| `CLUSTER_ISSUER` | `letsencrypt-prod` | `letsencrypt-prod` |
+| `GATEWAY_CLASS` | `envoy` | `envoy` |
+| `CLUSTER_NAME` | `test` | `rack` |
+
+The rack side (pinned commit, values, fixed MetalLB IPs, DDNS) lives in
+Sifungurux/homelab, `clusters/rack/`.
+
+## Test cluster
+
+```sh
+make up                                   # colima "netbird" + k3d + Envoy Gateway + cert-manager + issuers
+CLOUDFLARE_API_TOKEN=... scripts/secrets.sh cloudflare
+scripts/secrets.sh server netbird-test.nordkeel.dk
+make apply && make verify
+# dashboard: claim owner, create a reusable + ephemeral setup key
+NB_SETUP_KEY=... scripts/secrets.sh routing-peer && make apply
+```
+
+## Gotchas
+
+- **Never overwrite `netbird-server-config`.** Its `store.encryptionKey`
+  encrypts the database; `secrets.sh server` refuses on purpose. Back the
+  Secret up the moment it is created.
+- **One port, two Services.** Port 80 serves gRPC (h2c) and HTTP/1.1
+  WebSocket. gRPC routes go to `netbird-server-grpc`, everything else to
+  `netbird-server`. An h2c upstream breaks the relay's WebSocket upgrade.
+- **Stream timeouts.** Envoy's defaults (15s route, 5m stream idle) cut
+  peers' long-lived streams. `BackendTrafficPolicy netbird-streams` disables
+  them, and needs an Envoy Gateway that supports `streamIdleTimeout`.
+- **Home router DNS.** It strips private answers (DNS-rebind protection)
+  and answers SOA queries with nothing.
+  - On test: an `/etc/hosts` entry on peers, `test/coredns-custom.yaml`
+    for pods, and cert-manager checking DNS-01 against 1.1.1.1.
+  - The rack's cert-manager needs the same DNS-01 flags.
+- **colima forwards TCP only.** STUN (3478/udp) is not reachable from
+  outside the colima VM on the test cluster. The relay over 443 covers it.
+  If 443 isn't reachable on the LAN IP either, restart the profile with
+  `colima start netbird --network-address`.
+- **Laptop IP.** If DHCP changes `192.168.0.18`, update the Cloudflare A
+  record, `test/coredns-custom.yaml` and `/etc/hosts`.
+- **KUBECONFIG with several entries** makes k3d write no context.
+  `test/up.sh` merges into `~/.kube/config` explicitly.
