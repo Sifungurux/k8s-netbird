@@ -1,0 +1,21 @@
+# Test cluster for NetBird. Shaped like the rack where it matters:
+# no Traefik (the rack routes through Envoy Gateway), same k8s minor.
+# k3s ServiceLB stands in for MetalLB, publishing LoadBalancer ports
+# on the k3d loadbalancer node, which maps them onto the laptop.
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: netbird-test
+servers: 1
+agents: 1
+image: rancher/k3s:v1.35.8-k3s1
+ports:
+  - port: 443:443
+    nodeFilters: ["loadbalancer"]
+  - port: 3478:3478/udp
+    nodeFilters: ["loadbalancer"]
+options:
+  k3s:
+    extraArgs:
+      - arg: --disable=traefik
+        nodeFilters: ["server:*"]
