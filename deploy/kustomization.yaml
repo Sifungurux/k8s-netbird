@@ -8,3 +8,5 @@ resources:
   - namespace.yaml
   - server.yaml
   - stun-service.yaml
+  - dashboard.yaml
+  - gateway.yaml

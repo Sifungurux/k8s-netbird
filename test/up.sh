@@ -32,14 +32,20 @@ spec:
   controllerName: gateway.envoyproxy.io/gatewayclass-controller
 EOF
 
-# Same chart and version the rack's HelmRelease pins.
+# Same chart and version the rack's HelmRelease pins. DNS-01 checks go
+# straight to a public resolver: the home router's DNS proxy answers SOA
+# queries with an empty NOERROR, so through the cluster's normal
+# upstream cert-manager can never find the zone and waits forever.
 helm upgrade --install cert-manager cert-manager --repo https://charts.jetstack.io \
   --version v1.19.1 -n cert-manager --create-namespace \
-  --set crds.enabled=true --wait --timeout 5m
+  --set crds.enabled=true \
+  --set 'extraArgs={--dns01-recursive-nameservers-only,--dns01-recursive-nameservers=1.1.1.1:53}' \
+  --wait --timeout 5m
 
 kubectl wait --for=condition=Accepted gatewayclass/envoy --timeout=120s
 
 if [[ -f issuers.yaml ]]; then
   kubectl apply -f issuers.yaml
 fi
+kubectl apply -f coredns-custom.yaml
 echo "test cluster ready: context k3d-netbird-test"
