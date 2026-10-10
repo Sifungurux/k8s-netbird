@@ -10,3 +10,4 @@ resources:
   - stun-service.yaml
   - dashboard.yaml
   - gateway.yaml
+  - routing-peer.yaml

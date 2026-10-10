@@ -1,0 +1,52 @@
+# The NetBird server is not a peer. This pod is: it joins the mesh with a
+# setup key, and a NetBird Network (configured in the dashboard) routes
+# the cluster's LAN through it, masqueraded. Pod egress to the LAN is
+# SNATed to the node by the CNI, so no hostNetwork is needed.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: netbird-routing-peer
+  namespace: netbird
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: netbird-routing-peer
+  template:
+    metadata:
+      labels:
+        app: netbird-routing-peer
+    spec:
+      containers:
+        - name: netbird
+          image: netbirdio/netbird:0.80.0
+          env:
+            - name: NB_MANAGEMENT_URL
+              value: https://${NETBIRD_DOMAIN}
+            - name: NB_HOSTNAME
+              value: routing-peer-${CLUSTER_NAME}
+            - name: NB_SETUP_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: netbird-routing-peer
+                  key: setup-key
+          # ponytail: privileged is the smallest thing that works for one pod --
+          # it needs /dev/net/tun and to set net.ipv4.ip_forward for masquerade,
+          # which capabilities alone do not grant on containerd. Narrow it to a
+          # hostPath /dev/net/tun + allowed sysctl if this pod ever multiplies.
+          securityContext:
+            privileged: true
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+          volumeMounts:
+            - name: state
+              mountPath: /var/lib/netbird
+      volumes:
+        - name: state
+          emptyDir: {}

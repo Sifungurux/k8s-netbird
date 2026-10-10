@@ -4,6 +4,8 @@
 #
 #   secrets.sh cloudflare            cert-manager/cloudflare-api-token  (env CLOUDFLARE_API_TOKEN)
 #   secrets.sh server <domain>       netbird/netbird-server-config      (refuses to overwrite)
+#   secrets.sh routing-peer          netbird/netbird-routing-peer       (env NB_SETUP_KEY)
+#   secrets.sh ddns                  netbird/cloudflare-ddns-token      (env CLOUDFLARE_DDNS_TOKEN)
 set -euo pipefail
 
 echo "kubectl context: $(kubectl config current-context)" >&2
@@ -57,6 +59,18 @@ EOF
     echo "Created. Back it up NOW -- without it the database cannot be decrypted:" >&2
     echo "  kubectl -n netbird get secret netbird-server-config -o jsonpath='{.data.config\\.yaml}' | base64 -d" >&2
     echo "  -> LastPass secure note: 'Home\\Servers/netbird-server-config $(kubectl config current-context)'" >&2
+    ;;
+  routing-peer)
+    : "${NB_SETUP_KEY:?set NB_SETUP_KEY (dashboard -> Setup Keys, reusable + ephemeral)}"
+    ensure_ns netbird
+    kubectl -n netbird create secret generic netbird-routing-peer \
+      --from-literal=setup-key="${NB_SETUP_KEY}" --dry-run=client -o yaml | kubectl apply -f -
+    ;;
+  ddns)
+    : "${CLOUDFLARE_DDNS_TOKEN:?set CLOUDFLARE_DDNS_TOKEN (separate token, Zone:DNS:Edit + Zone:Read on nordkeel.dk)}"
+    ensure_ns netbird
+    kubectl -n netbird create secret generic cloudflare-ddns-token \
+      --from-literal=token="${CLOUDFLARE_DDNS_TOKEN}" --dry-run=client -o yaml | kubectl apply -f -
     ;;
   *)
     sed -n '2,/^set -euo/p' "$0" | sed '$d' >&2
