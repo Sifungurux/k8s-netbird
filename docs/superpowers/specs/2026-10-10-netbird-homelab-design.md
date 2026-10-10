@@ -79,7 +79,9 @@ Makefile targets) are removed; git history keeps them.
 | `NETBIRD_DOMAIN` | `netbird-test.nordkeel.dk` | `netbird.nordkeel.dk` |
 | `CLUSTER_ISSUER` | `letsencrypt-staging`, then `letsencrypt-prod` | `letsencrypt-prod` |
 | `GATEWAY_CLASS` | `envoy` | `envoy` |
-| `LAN_CIDR` (routing peer) | laptop LAN, e.g. `192.168.50.0/24` | `192.168.150.0/24` |
+| `CLUSTER_NAME` (routing peer hostname) | `test` | `rack` |
+
+The routed CIDR is not a variable. It is a NetBird Network configured in the dashboard: on test it is the k3d Docker network (unreachable from the macOS host, so it stands in for the rack LAN); on the rack it is `192.168.150.0/24`.
 
 The fixed MetalLB IPs on the rack (`192.168.150.40` Gateway, `.41` STUN) are
 rack-only. They go in as Kustomization `patches` in `homelab`: an `EnvoyProxy`
@@ -123,7 +125,7 @@ public IP. Either the router hairpins, or the local DNS overrides the name to
 
 The control plane is not a peer. A routing-peer pod (netbird client,
 `NET_ADMIN`, setup key) joins as a peer, and a NetBird Network/route advertises
-`${LAN_CIDR}` through it with masquerade. Cilium SNATs pod egress to the node
+the LAN CIDR through it with masquerade. Cilium SNATs pod egress to the node
 LAN. An access policy limits that route to the owner's group.
 
 ## Testing
