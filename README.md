@@ -46,9 +46,17 @@ make up                                   # colima "netbird" + k3d + Envoy Gatew
 CLOUDFLARE_API_TOKEN=... scripts/secrets.sh cloudflare
 scripts/secrets.sh server netbird-test.nordkeel.dk
 make apply && make verify
-# dashboard: claim owner, create a reusable + ephemeral setup key
+# dashboard: claim owner, create a reusable + ephemeral setup key with
+# auto-group "<cluster>-routers" (e.g. test-routers)
 NB_SETUP_KEY=... scripts/secrets.sh routing-peer && make apply
+# Networks: set the routing peer to the GROUP <cluster>-routers, not the peer
 ```
+
+The routing peer keeps its state in an `emptyDir` and enrolls with an
+ephemeral key. Every pod restart therefore creates a **new** peer, and the
+old one is cleaned up. A Network routed through the individual peer loses
+its router on the first reschedule. Routed through the auto-group, the new
+peer takes over by itself.
 
 ## Gotchas
 

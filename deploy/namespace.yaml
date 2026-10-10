@@ -1,4 +1,9 @@
+# Never pruned by Flux: deleting this namespace deletes the config Secret
+# (the database encryption key) and the data PVC together. Removing NetBird
+# is a deliberate manual step, not a side effect of a rename or re-pin.
 apiVersion: v1
 kind: Namespace
 metadata:
   name: netbird
+  annotations:
+    kustomize.toolkit.fluxcd.io/prune: disabled
