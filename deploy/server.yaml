@@ -8,6 +8,9 @@ kind: PersistentVolumeClaim
 metadata:
   name: netbird-data
   namespace: netbird
+  annotations:
+    # Same reason as the Namespace: this is the database.
+    kustomize.toolkit.fluxcd.io/prune: disabled
 spec:
   accessModes: [ReadWriteOnce]
   resources:

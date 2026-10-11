@@ -1,6 +1,3 @@
-# Explicit target: KUBECONFIG often lists several files (one relative),
-# and k3d then refuses to pick a default and writes no context at all.
-k3d kubeconfig merge netbird-test --output "${HOME}/.kube/config" >/dev/null
 #!/usr/bin/env bash
 # Brings up the NetBird test cluster: colima profile "netbird", k3d,
 # Envoy Gateway, cert-manager and the LE ClusterIssuers. Idempotent --

@@ -8,6 +8,11 @@ metadata:
   namespace: netbird
 spec:
   type: LoadBalancer
+  # Local, not Cluster: a hop to another node SNATs the packet, and STUN
+  # would then report that node's LAN address as the peer's reflexive
+  # address -- P2P silently degrades to relay. MetalLB L2 announces the
+  # IP from the node running the pod instead.
+  externalTrafficPolicy: Local
   selector:
     app: netbird-server
   ports:
