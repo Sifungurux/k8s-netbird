@@ -64,4 +64,16 @@ Backup beforehand: `netbird-server-config` + PVC tar (`store.db`, `idp.db`,
 | 4 | Same database | PASS | Same PV; `/api/instance` `{"setup_required":false}`. |
 | 5 | MetalLB IPs, certificate, stream timeouts | PASS | Envoy `.40`, `netbird-stun` `.41`; `netbird-tls` Ready; `netbird-streams` Accepted. |
 | 6 | `NETBIRD_DOMAIN=netbird.nordkeel.dk make verify` | PASS | ALL OK. Routing peer connected to Management and Signal. |
-| 7 | Phone on 4G reaches the LAN | pending | Manual. |
+| 7 | Phone on 4G reaches the LAN | PASS | After the fix below. |
+
+**Finding (fixed in the dashboard):** at first the phone could not reach
+`192.168.150.0/24`. The Network's router was one specific routing-peer
+*peer*, not the group `rack-routers`. Each routing-pod restart (cutover,
+the 1.2.0 upgrade) registers a new ephemeral peer, so the route stayed on a
+dead peer. The new pod's log shows the symptom:
+`network [192.168.150.0/24] has not been assigned a routing peer as no
+peers from the list [...] are currently available`. Fix: router → Peer
+Group `rack-routers`, and the setup key recreated (reusable, ephemeral,
+auto-group `rack-routers`). Proven with a `rollout restart`: the new peer
+logged `IPv4 forwarding enabled` 6s later, with nothing changed in the
+dashboard.
