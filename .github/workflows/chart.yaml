@@ -36,6 +36,7 @@ jobs:
   publish:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    concurrency: chart-publish
     permissions:
       contents: read
       packages: write
@@ -55,13 +56,21 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin <<< "${GITHUB_TOKEN}"
           v=$(yq .version chart/netbird/Chart.yaml)
-          # ponytail: any failure of `helm show` (not only "not found") means
-          # push; GHCR then re-tags the same chart version from the same commit.
-          if helm show chart oci://ghcr.io/sifungurux/charts/netbird --version "${v}" >/dev/null 2>&1; then
-            echo "netbird ${v} already published"
-            exit 0
-          fi
+          # Push only on a definite 404: a timeout or 5xx must not re-tag a
+          # published version (homelab pins its digest). GHCR also says 404 for
+          # a bad token; the login below then fails instead.
+          token=$(curl -sSf -u "${{ github.actor }}:${GITHUB_TOKEN}" \
+            "https://ghcr.io/token?scope=repository:sifungurux/charts/netbird:pull" | jq -r .token)
+          code=$(curl -s -o /dev/null -w '%{http_code}' -I \
+            -H "Authorization: Bearer ${token}" \
+            -H "Accept: application/vnd.oci.image.manifest.v1+json" \
+            "https://ghcr.io/v2/sifungurux/charts/netbird/manifests/${v}" || true)
+          case ${code} in
+            200) echo "netbird ${v} already published"; exit 0 ;;
+            404) ;;
+            *) echo "GHCR answered ${code} for netbird ${v}, not pushing" >&2; exit 1 ;;
+          esac
+          helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin <<< "${GITHUB_TOKEN}"
           helm package chart/netbird
           helm push "netbird-${v}.tgz" oci://ghcr.io/sifungurux/charts
