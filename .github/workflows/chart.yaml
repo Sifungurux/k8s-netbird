@@ -20,6 +20,13 @@ on:
 permissions:
   contents: read
 
+# An explicit `shell: bash` adds pipefail (the default is `bash -e`): without
+# it a failed `curl | jq` token request reads as an empty token, GHCR says 404
+# and the guard would push over an existing version.
+defaults:
+  run:
+    shell: bash
+
 jobs:
   check:
     if: github.event_name == 'pull_request'
