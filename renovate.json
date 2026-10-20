@@ -9,22 +9,15 @@
       "matchManagers": ["helm-values"],
       "matchPackageNames": ["netbirdio/netbird-server", "netbirdio/netbird"],
       "groupName": "netbird"
-    },
+    }
+  ],
+  "bumpVersions": [
     {
-      "description": "Chart version follows the upstream bump: major -> major, minor -> minor, patch -> patch",
-      "matchManagers": ["helm-values"],
-      "matchUpdateTypes": ["major"],
-      "bumpVersion": "major"
-    },
-    {
-      "matchManagers": ["helm-values"],
-      "matchUpdateTypes": ["minor"],
-      "bumpVersion": "minor"
-    },
-    {
-      "matchManagers": ["helm-values"],
-      "matchUpdateTypes": ["patch"],
-      "bumpVersion": "patch"
+      "name": "chart version follows the upstream bump",
+      "description": "helm-values ignores bumpVersion (it never touches Chart.yaml), so the chart version is bumped here: major -> major, minor -> minor, patch -> patch.",
+      "filePatterns": ["chart/netbird/Chart.yaml"],
+      "matchStrings": ["\\nversion:\\s*(?<version>\\S+)"],
+      "bumpType": "{{#if isMajor}}major{{else}}{{#if isMinor}}minor{{else}}patch{{/if}}{{/if}}"
     }
   ]
 }
