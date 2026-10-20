@@ -1,0 +1,29 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "enabledManagers": ["helm-values", "github-actions"],
+  "packageRules": [
+    {
+      "description": "netbird-server and the routing peer's client share a version",
+      "matchManagers": ["helm-values"],
+      "matchPackageNames": ["netbirdio/netbird-server", "netbirdio/netbird"],
+      "groupName": "netbird"
+    },
+    {
+      "description": "Chart version follows the upstream bump: major -> major, minor -> minor, patch -> patch",
+      "matchManagers": ["helm-values"],
+      "matchUpdateTypes": ["major"],
+      "bumpVersion": "major"
+    },
+    {
+      "matchManagers": ["helm-values"],
+      "matchUpdateTypes": ["minor"],
+      "bumpVersion": "minor"
+    },
+    {
+      "matchManagers": ["helm-values"],
+      "matchUpdateTypes": ["patch"],
+      "bumpVersion": "patch"
+    }
+  ]
+}

@@ -19,7 +19,7 @@ helm upgrade --install eg oci://docker.io/envoyproxy/gateway-helm --version v1.9
   -n envoy-gateway-system --create-namespace --wait --timeout 5m
 
 # The rack's Envoy Gateway install created a GatewayClass named "envoy";
-# the base references ${GATEWAY_CLASS}, so the test cluster makes the same one.
+# the chart's gatewayClass defaults to it, so the test cluster makes the same one.
 kubectl apply -f - <<'EOF'
 apiVersion: gateway.networking.k8s.io/v1
 kind: GatewayClass
