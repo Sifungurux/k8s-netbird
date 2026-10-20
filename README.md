@@ -81,7 +81,12 @@ The rack and homelab's Renovate pull it without credentials.
 2. CI lints and renders the chart, and fails a PR that changes `chart/`
    without raising `version`. A change by hand bumps the patch version.
 3. Run the PR on the test cluster (`make apply && make verify`), merge.
-4. On merge, CI pushes the new version unless it is already on GHCR.
+4. On merge, CI pushes the new version unless it is already on GHCR, and
+   signs it with cosign, keyless: the signer is `chart.yaml` on `main`, and
+   homelab's OCIRepository refuses anything else. To sign a version that is
+   already published, run the workflow by hand
+   (`gh workflow run chart.yaml --ref main`). Every signature is a public
+   Rekor entry with the repo name, workflow and commit SHA.
 5. Renovate in homelab opens a PR bumping the HelmRelease's version;
    merging it rolls the rack.
 
