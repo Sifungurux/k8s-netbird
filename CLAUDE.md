@@ -11,8 +11,6 @@ See `README.md` for layout and gotchas; the spec and plan are under
   in Sifungurux/homelab `clusters/rack/`. Per-cluster settings are values
   (`domain`, `clusterIssuer`, `gatewayClass`, `clusterName`, the two
   `serviceAnnotations`); test values are `test/values.yaml`.
-  Until the rack cutover (`docs/superpowers/plans/2026-10-20-helm-chart.md`
-  Task 5) the rack still runs the old `deploy/` from pinned commit `a241cb8`.
 - Every change under `chart/` bumps `version` in `Chart.yaml` (CI enforces:
   `scripts/chart-version-check.sh`). Run `make render` (`helm template`)
   after any change.

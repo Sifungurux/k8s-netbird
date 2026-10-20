@@ -48,3 +48,20 @@ Test IP now 192.168.50.138 (`test/coredns-custom.yaml`, `/etc/hosts`).
 | 4 | `make apply` | PASS | `STATUS: deployed`, no "cannot be imported". |
 | 5 | After: same checks | PASS | Same PV; `setup_required:false`; `make verify` ALL OK; routing peer re-enrolled with its setup key and connected to Management, Signal and Relay. |
 | 6 | `helm uninstall` keeps the PVC, reinstall | PASS | "kept due to the resource policy: netbird-data"; reinstall rebinds the same PV; all checks as in #5. |
+
+## 2026-10-20 — rack cutover: deploy/ → chart/netbird 1.0.0
+
+Sifungurux/homelab #13 (remove the Kustomization, own the Namespace) and
+#14 (OCIRepository 1.0.0 + HelmRelease), done from the LAN.
+Backup beforehand: `netbird-server-config` + PVC tar (`store.db`, `idp.db`,
+`events.db`) in `~/Backups/netbird-rack-2026-10-20`.
+
+| # | Check | Result | Notes |
+|---|---|---|---|
+| 1 | After #13: old objects pruned, PVC/Namespace/Secrets kept | PASS | PV `pvc-2873d075-…` Bound; `cloudflare-ddns` untouched. |
+| 2 | PVC handed to Helm, Flux labels removed | PASS | |
+| 3 | After #14: HelmRelease Ready | PASS | `Helm install succeeded`, chart `1.0.0@sha256:66064741`. |
+| 4 | Same database | PASS | Same PV; `/api/instance` `{"setup_required":false}`. |
+| 5 | MetalLB IPs, certificate, stream timeouts | PASS | Envoy `.40`, `netbird-stun` `.41`; `netbird-tls` Ready; `netbird-streams` Accepted. |
+| 6 | `NETBIRD_DOMAIN=netbird.nordkeel.dk make verify` | PASS | ALL OK. Routing peer connected to Management and Signal. |
+| 7 | Phone on 4G reaches the LAN | pending | Manual. |
