@@ -32,12 +32,18 @@ spec:
                 secretKeyRef:
                   name: netbird-routing-peer
                   key: setup-key
-          # ponytail: privileged is the smallest thing that works for one pod --
-          # it needs /dev/net/tun and to set net.ipv4.ip_forward for masquerade,
-          # which capabilities alone do not grant on containerd. Narrow it to a
-          # hostPath /dev/net/tun + allowed sysctl if this pod ever multiplies.
+          # Not privileged. Kernel WireGuard needs only NET_ADMIN (no
+          # /dev/net/tun), and the pod netns inherits ip_forward=1 from the
+          # node. NET_RAW is for iptables (masquerade). Expected log noise
+          # from the read-only /proc/sys and the memlock limit:
+          #   - the src_valid_mark sysctl write fails: it only matters if this
+          #     peer itself uses NetBird routes;
+          #   - the eBPF wg proxy falls back to the user-space UDP proxy.
+          # Verified on the rack 2026-10-20: phone on 4G reached the LAN.
           securityContext:
-            privileged: true
+            privileged: false
+            capabilities:
+              add: [NET_ADMIN, NET_RAW]
           resources:
             requests:
               cpu: 20m
