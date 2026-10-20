@@ -34,3 +34,17 @@ fallback was not needed for TCP.
   answered in 7 ms. The laptop's 0.70.x client woke the routing peer only
   after a few seconds and a retry. Upgrade laptop clients (`brew upgrade
   netbird`) before relying on this from the road.
+
+## 2026-10-20 — cutover rehearsal: deploy/ → chart/netbird 1.0.0
+
+Same k3d cluster, resumed with the old `deploy/` layout and its data.
+Test IP now 192.168.50.138 (`test/coredns-custom.yaml`, `/etc/hosts`).
+
+| # | Step | Result | Notes |
+|---|---|---|---|
+| 1 | Before: `make verify`, owner, PV | PASS | ALL OK; `/api/instance` `{"setup_required":false}`; PV `pvc-ae07a482-…`; routing peer connected. |
+| 2 | Delete old objects except Namespace + PVC (stands in for Flux prune) | PASS | PVC Bound; `netbird-server-config`, `netbird-routing-peer`, `netbird-tls` untouched. |
+| 3 | Hand PVC to Helm (managed-by label, release-name/namespace `netbird`) | PASS | |
+| 4 | `make apply` | PASS | `STATUS: deployed`, no "cannot be imported". |
+| 5 | After: same checks | PASS | Same PV; `setup_required:false`; `make verify` ALL OK; routing peer re-enrolled with its setup key and connected to Management, Signal and Relay. |
+| 6 | `helm uninstall` keeps the PVC, reinstall | PASS | "kept due to the resource policy: netbird-data"; reinstall rebinds the same PV; all checks as in #5. |

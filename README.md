@@ -10,42 +10,50 @@ the rack LAN from anywhere over a WireGuard mesh.
 - **TLS:** a Let's Encrypt certificate from cert-manager, validated by
   Cloudflare DNS-01.
 
-Design: `docs/superpowers/specs/2026-10-10-netbird-homelab-design.md`.
+Design: `docs/superpowers/specs/2026-10-10-netbird-homelab-design.md`;
+packaging as a Helm chart: `docs/superpowers/specs/2026-10-20-helm-chart-design.md`.
 Test results: `docs/test-log.md`.
 
 ## Layout
 
 ```
-deploy/               kustomize base -- the only thing the rack consumes
-  server.yaml         netbird-server, SQLite PVC, http + h2c Services
-  stun-service.yaml   3478/udp LoadBalancer
-  dashboard.yaml
-  gateway.yaml        Gateway, Certificate, HTTPRoute, stream timeouts
-  routing-peer.yaml   in-cluster peer that routes the LAN into the mesh
-scripts/secrets.sh    Secrets that never go in git (current kubectl context)
-test/                 k3d test cluster: up/down, vars, render, verify
+chart/netbird/            the Helm chart -- the only thing the rack consumes
+  templates/server.yaml   netbird-server, SQLite PVC, http + h2c Services
+  templates/stun-service.yaml  3478/udp LoadBalancer
+  templates/dashboard.yaml
+  templates/gateway.yaml  Gateway, Certificate, HTTPRoute, stream timeouts
+  templates/routing-peer.yaml  in-cluster peer that routes the LAN into the mesh
+scripts/secrets.sh        Secrets that never go in git (current kubectl context)
+scripts/chart-version-check.sh  CI: chart changes must bump the version
+test/                     k3d test cluster: up/down, values.yaml, verify
 ```
 
-Per-cluster values are four variables, substituted by Flux `postBuild` on
-the rack and by `flux envsubst --strict` in `test/render.sh`:
+The chart installs as release `netbird` into namespace `netbird`. It does
+not create the Namespace or any Secret. Per-cluster values:
 
-| Variable | Test | Rack |
+| Value | Test (`test/values.yaml`) | Rack |
 |---|---|---|
-| `NETBIRD_DOMAIN` | `netbird-test.nordkeel.dk` | `netbird.nordkeel.dk` |
-| `CLUSTER_ISSUER` | `letsencrypt-prod` | `letsencrypt-prod` |
-| `GATEWAY_CLASS` | `envoy` | `envoy` |
-| `CLUSTER_NAME` | `test` | `rack` |
+| `domain` | `netbird-test.nordkeel.dk` | `netbird.nordkeel.dk` |
+| `clusterIssuer` | `letsencrypt-prod` | `letsencrypt-prod` |
+| `gatewayClass` | `envoy` (default) | `envoy` |
+| `clusterName` | `test` | `rack` |
+| `gateway.serviceAnnotations` | -- | `metallb.io/loadBalancerIPs: 192.168.150.40` |
+| `stun.serviceAnnotations` | -- | `metallb.io/loadBalancerIPs: 192.168.150.41` |
 
-The rack side (pinned commit, values, fixed MetalLB IPs, DDNS) lives in
-Sifungurux/homelab, `clusters/rack/`.
+`domain`, `clusterIssuer` and `clusterName` are required: a render without
+them fails. Image tags are in `chart/netbird/values.yaml`.
+
+The rack side (OCIRepository, HelmRelease with these values, DDNS) lives
+in Sifungurux/homelab, `clusters/rack/`, once the cutover below is done.
+Until then the rack runs the old `deploy/` from pinned commit `a241cb8`.
 
 ## Test cluster
 
 ```sh
 make up                                   # colima "netbird" + k3d + Envoy Gateway + cert-manager + issuers
 CLOUDFLARE_API_TOKEN=... scripts/secrets.sh cloudflare
-scripts/secrets.sh server netbird-test.nordkeel.dk
-make apply && make verify
+scripts/secrets.sh server netbird-test.nordkeel.dk   # also creates the namespace
+make apply && make verify                 # helm upgrade --install; make render = helm template
 # dashboard: claim owner, create a reusable + ephemeral setup key with
 # auto-group "<cluster>-routers" (e.g. test-routers)
 NB_SETUP_KEY=... scripts/secrets.sh routing-peer && make apply
@@ -57,6 +65,45 @@ ephemeral key. Every pod restart therefore creates a **new** peer, and the
 old one is cleaned up. A Network routed through the individual peer loses
 its router on the first reschedule. Routed through the auto-group, the new
 peer takes over by itself.
+
+## Releasing
+
+The chart is published to `oci://ghcr.io/sifungurux/charts/netbird`
+(public) by `.github/workflows/chart.yaml`. New GHCR packages start
+private: after the first publish, set Package settings → visibility to
+Public once, then check that `helm show chart
+oci://ghcr.io/sifungurux/charts/netbird` works without `helm registry login`.
+The rack and homelab's Renovate pull it without credentials.
+
+1. Renovate opens a PR bumping a NetBird image tag in
+   `chart/netbird/values.yaml` and the chart `version`: upstream major,
+   minor or patch bumps the chart at the same level. `netbird-server` and
+   the `netbird` client move together; the dashboard on its own.
+2. CI lints and renders the chart, and fails a PR that changes `chart/`
+   without raising `version`. A change by hand bumps the patch version.
+3. Run the PR on the test cluster (`make apply && make verify`), merge.
+4. On merge, CI pushes the new version unless it is already on GHCR.
+5. Renovate in homelab opens a PR bumping the HelmRelease's version;
+   merging it rolls the rack.
+
+## Cutover from the old kustomize base
+
+Rehearsed on the test cluster 2026-10-20 (`docs/test-log.md`). Needs a
+short outage and must be done from the LAN: the routing peer goes down too.
+
+1. Back up `netbird-server-config` and the PVC contents.
+2. Remove the old objects but keep the Namespace and `netbird-data` (on the
+   rack: remove the Flux Kustomization; both are `prune: disabled`).
+3. Hand the PVC to Helm, and on the rack drop Flux's labels:
+   ```sh
+   kubectl --context <ctx> -n netbird label pvc netbird-data app.kubernetes.io/managed-by=Helm --overwrite
+   kubectl --context <ctx> -n netbird annotate pvc netbird-data meta.helm.sh/release-name=netbird meta.helm.sh/release-namespace=netbird --overwrite
+   kubectl --context <ctx> -n netbird label pvc netbird-data kustomize.toolkit.fluxcd.io/name- kustomize.toolkit.fluxcd.io/namespace-
+   ```
+4. Install the chart (`make apply` / the HelmRelease). Check: the PVC is
+   bound to the same PV, `/api/instance` still says `"setup_required":false`,
+   `make verify` passes (`NETBIRD_DOMAIN=netbird.nordkeel.dk make verify`
+   for the rack).
 
 ## Gotchas
 
@@ -78,7 +125,8 @@ peer takes over by itself.
   outside the colima VM on the test cluster. The relay over 443 covers it.
   If 443 isn't reachable on the LAN IP either, restart the profile with
   `colima start netbird --network-address`.
-- **Laptop IP.** If DHCP changes `192.168.0.18`, update the Cloudflare A
-  record, `test/coredns-custom.yaml` and `/etc/hosts`.
+- **Laptop IP.** If DHCP changes `192.168.50.138`, update
+  `test/coredns-custom.yaml` and `/etc/hosts`. A public A record is not
+  needed: the router strips private answers, so nothing on the LAN uses it.
 - **KUBECONFIG with several entries** makes k3d write no context.
   `test/up.sh` merges into `~/.kube/config` explicitly.

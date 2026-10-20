@@ -1,11 +1,14 @@
-# STUN is UDP and cannot go through the Gateway. On the rack, homelab
-# patches a fixed MetalLB IP onto this Service so the router's 3478/udp
+# STUN is UDP and cannot go through the Gateway. On the rack,
+# stun.serviceAnnotations sets a fixed MetalLB IP so the router's 3478/udp
 # forward has a stable target.
 apiVersion: v1
 kind: Service
 metadata:
   name: netbird-stun
-  namespace: netbird
+  namespace: {{ .Release.Namespace }}
+  {{- with .Values.stun.serviceAnnotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   type: LoadBalancer
   # Local, not Cluster: a hop to another node SNATs the packet, and STUN

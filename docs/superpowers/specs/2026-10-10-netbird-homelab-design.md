@@ -25,7 +25,7 @@ rack.
 | Decision | Choice | Why |
 |---|---|---|
 | NetBird topology | Combined `netbirdio/netbird-server` (management + signal + relay + STUN in one container), v0.80.x | Current upstream layout since v0.65. Coturn is obsolete; relay runs over WebSocket on 443. |
-| Packaging | Plain kustomize manifests | The official chart (1.9.0, app 0.46, Aug 2025) only covers the old split layout. |
+| Packaging | Plain kustomize manifests | The official chart (1.9.0, app 0.46, Aug 2025) only covers the old split layout. **Superseded** by our own chart: `2026-10-20-helm-chart-design.md`. |
 | Identity | Embedded IdP (Dex), local users | Always on in the combined server, supports device auth for `netbird up`. Drops Keycloak entirely. External IdPs can be added later as connectors. |
 | TLS | cert-manager + Let's Encrypt, **ACME DNS-01 via Cloudflare API token** | No inbound port 80 needed, so the NAT'd laptop test cluster gets the same real cert as the rack with an identical issuer. Origin CA (only trusted by Cloudflare's edge) and Tunnel (no UDP/STUN) don't fit a DNS-only service. NetBird's built-in LE needs HTTP-01/TLS-ALPN and terminates TLS in the pod. |
 | Cert scope | One hostname per environment, no wildcard: `netbird.nordkeel.dk` (rack), `netbird-test.nordkeel.dk` (test) | The combined server and dashboard share one host via path routing. |

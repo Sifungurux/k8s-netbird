@@ -1,0 +1,6 @@
+# Test cluster values (k3d-netbird-test). The rack's are in
+# Sifungurux/homelab, clusters/rack/releases/netbird.yaml.
+domain: netbird-test.nordkeel.dk
+clusterIssuer: letsencrypt-prod
+gatewayClass: envoy
+clusterName: test

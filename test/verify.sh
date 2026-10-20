@@ -4,7 +4,8 @@
 #   test/verify.sh --insecure  while still on the staging issuer
 set -euo pipefail
 cd "$(dirname "$0")"
-set -a; source vars.env; set +a
+# NETBIRD_DOMAIN overrides the test domain, e.g. to check the rack.
+NETBIRD_DOMAIN=${NETBIRD_DOMAIN:-$(yq .domain values.yaml)}
 k=(); [[ "${1:-}" == "--insecure" ]] && k=(-k)
 base="https://${NETBIRD_DOMAIN}"
 fail() { echo "FAIL: $*" >&2; exit 1; }

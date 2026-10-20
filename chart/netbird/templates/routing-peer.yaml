@@ -6,7 +6,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: netbird-routing-peer
-  namespace: netbird
+  namespace: {{ .Release.Namespace }}
 spec:
   replicas: 1
   strategy:
@@ -21,12 +21,12 @@ spec:
     spec:
       containers:
         - name: netbird
-          image: netbirdio/netbird:0.80.0
+          image: {{ .Values.routingPeer.image.repository }}:{{ .Values.routingPeer.image.tag }}
           env:
             - name: NB_MANAGEMENT_URL
-              value: https://${NETBIRD_DOMAIN}
+              value: https://{{ required "domain is required" .Values.domain }}
             - name: NB_HOSTNAME
-              value: routing-peer-${CLUSTER_NAME}
+              value: routing-peer-{{ required "clusterName is required" .Values.clusterName }}
             - name: NB_SETUP_KEY
               valueFrom:
                 secretKeyRef:

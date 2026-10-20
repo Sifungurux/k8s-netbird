@@ -7,21 +7,22 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: netbird-data
-  namespace: netbird
+  namespace: {{ .Release.Namespace }}
   annotations:
-    # Same reason as the Namespace: this is the database.
-    kustomize.toolkit.fluxcd.io/prune: disabled
+    # This is the database: helm uninstall (or helm-controller remediating a
+    # failed install) must leave it, and the chart never recreates it.
+    helm.sh/resource-policy: keep
 spec:
   accessModes: [ReadWriteOnce]
   resources:
     requests:
-      storage: 1Gi
+      storage: {{ .Values.server.persistence.size }}
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: netbird-server
-  namespace: netbird
+  namespace: {{ .Release.Namespace }}
 spec:
   replicas: 1
   strategy:
@@ -36,7 +37,7 @@ spec:
     spec:
       containers:
         - name: server
-          image: netbirdio/netbird-server:0.80.0
+          image: {{ .Values.server.image.repository }}:{{ .Values.server.image.tag }}
           args: ["--config", "/etc/netbird/config.yaml"]
           ports:
             - name: http
@@ -83,7 +84,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: netbird-server
-  namespace: netbird
+  namespace: {{ .Release.Namespace }}
 spec:
   selector:
     app: netbird-server
@@ -96,7 +97,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: netbird-server-grpc
-  namespace: netbird
+  namespace: {{ .Release.Namespace }}
 spec:
   selector:
     app: netbird-server

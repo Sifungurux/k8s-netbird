@@ -1,26 +1,27 @@
 # Own Gateway on the shared "envoy" GatewayClass, so NetBird gets its own
 # LoadBalancer IP (the router's 443 forward target) instead of sharing the
-# supply-chain-monitor Gateway. The EnvoyProxy exists so homelab can patch
-# a fixed MetalLB IP onto the Envoy Service; in the base it changes nothing.
+# supply-chain-monitor Gateway. The EnvoyProxy exists to put
+# gateway.serviceAnnotations (the rack's fixed MetalLB IP) on the Envoy
+# Service; empty, it changes nothing.
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: EnvoyProxy
 metadata:
   name: netbird
-  namespace: netbird
+  namespace: {{ .Release.Namespace }}
 spec:
   provider:
     type: Kubernetes
     kubernetes:
       envoyService:
-        annotations: {}
+        annotations: {{- toYaml .Values.gateway.serviceAnnotations | nindent 10 }}
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   name: netbird
-  namespace: netbird
+  namespace: {{ .Release.Namespace }}
 spec:
-  gatewayClassName: ${GATEWAY_CLASS}
+  gatewayClassName: {{ required "gatewayClass is required" .Values.gatewayClass }}
   infrastructure:
     parametersRef:
       group: gateway.envoyproxy.io
@@ -30,7 +31,7 @@ spec:
     - name: https
       protocol: HTTPS
       port: 443
-      hostname: ${NETBIRD_DOMAIN}
+      hostname: {{ required "domain is required" .Values.domain }}
       tls:
         mode: Terminate
         certificateRefs:
@@ -45,14 +46,14 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: netbird-tls
-  namespace: netbird
+  namespace: {{ .Release.Namespace }}
 spec:
   secretName: netbird-tls
   dnsNames:
-    - ${NETBIRD_DOMAIN}
+    - {{ required "domain is required" .Values.domain }}
   issuerRef:
     kind: ClusterIssuer
-    name: ${CLUSTER_ISSUER}
+    name: {{ required "clusterIssuer is required" .Values.clusterIssuer }}
 ---
 # Paths from the upstream quickstart's Traefik labels. Longest prefix
 # wins, so "/" only catches what the server does not serve.
@@ -60,12 +61,12 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: netbird
-  namespace: netbird
+  namespace: {{ .Release.Namespace }}
 spec:
   parentRefs:
     - name: netbird
   hostnames:
-    - ${NETBIRD_DOMAIN}
+    - {{ required "domain is required" .Values.domain }}
   rules:
     - matches:
         - path:
@@ -109,7 +110,7 @@ apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: BackendTrafficPolicy
 metadata:
   name: netbird-streams
-  namespace: netbird
+  namespace: {{ .Release.Namespace }}
 spec:
   targetRefs:
     - group: gateway.networking.k8s.io
