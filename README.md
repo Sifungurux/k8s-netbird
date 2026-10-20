@@ -44,8 +44,7 @@ not create the Namespace or any Secret. Per-cluster values:
 them fails. Image tags are in `chart/netbird/values.yaml`.
 
 The rack side (OCIRepository, HelmRelease with these values, DDNS) lives
-in Sifungurux/homelab, `clusters/rack/`, once the cutover below is done.
-Until then the rack runs the old `deploy/` from pinned commit `a241cb8`.
+in Sifungurux/homelab, `clusters/rack/` (since the 2026-10-20 cutover).
 
 ## Test cluster
 
