@@ -9,7 +9,8 @@ fails=0
 newrepo() { # newrepo <dir> [with-chart]
   mkdir "${tmp}/$1" && cd "${tmp}/$1"
   git init -q -b main && git config user.email t@t && git config user.name t
-  [[ -n ${2:-} ]] && cp -R "${root}/chart" .
+  # Base pinned at 1.0.0 so the cases below hold whatever the live version is.
+  [[ -n ${2:-} ]] && cp -R "${root}/chart" . && yq -i '.version = "1.0.0"' chart/netbird/Chart.yaml
   touch .keep && git add . && git commit -qm base
 }
 expect() { # expect <exit code> <description>

@@ -39,7 +39,16 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
       - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+      # Again on main: two PRs green against the same base can both bump to
+      # the same version. The second merge then changes the chart without a
+      # new version, and the existence check below would skip it silently.
+      - name: Chart changes since the previous main bumped the version
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: scripts/chart-version-check.sh "${BEFORE}"
       - name: Push the chart unless this version exists
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
