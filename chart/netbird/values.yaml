@@ -27,7 +27,7 @@ server:
 dashboard:
   image:
     repository: netbirdio/dashboard
-    tag: v2.94.0
+    tag: v2.95.0
 
 routingPeer:
   image:
