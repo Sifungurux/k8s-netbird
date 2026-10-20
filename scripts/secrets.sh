@@ -28,6 +28,13 @@ case "${1:-}" in
       echo "Delete it by hand only together with the netbird-data PVC." >&2
       exit 1
     fi
+    # A surviving PVC holds a database encrypted with the OLD key: a new key
+    # would make it unreadable. Restore the Secret from the backup instead.
+    if kubectl -n netbird get pvc netbird-data >/dev/null 2>&1; then
+      echo "netbird/netbird-data PVC exists but the Secret is gone; refusing to create a new key." >&2
+      echo "Restore netbird-server-config from the LastPass backup, or delete the PVC to start over." >&2
+      exit 1
+    fi
     ensure_ns netbird
     rand() { openssl rand -base64 32 | tr -d '\n'; }
     tmp="$(mktemp)"; trap 'rm -f "${tmp}"' EXIT
