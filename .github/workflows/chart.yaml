@@ -29,7 +29,9 @@ jobs:
       - run: helm lint chart/netbird -f test/values.yaml
       - run: helm template netbird chart/netbird -n netbird -f test/values.yaml > /dev/null
       - run: scripts/chart-version-check.test.sh
-      - run: scripts/chart-version-check.sh "origin/${{ github.base_ref }}"
+      - run: scripts/chart-version-check.sh "origin/${BASE_REF}"
+        env:
+          BASE_REF: ${{ github.base_ref }}
 
   publish:
     if: github.event_name == 'push'

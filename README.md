@@ -44,7 +44,8 @@ not create the Namespace or any Secret. Per-cluster values:
 them fails. Image tags are in `chart/netbird/values.yaml`.
 
 The rack side (OCIRepository, HelmRelease with these values, DDNS) lives
-in Sifungurux/homelab, `clusters/rack/`.
+in Sifungurux/homelab, `clusters/rack/`, once the cutover below is done.
+Until then the rack runs the old `deploy/` from pinned commit `a241cb8`.
 
 ## Test cluster
 
@@ -68,7 +69,11 @@ peer takes over by itself.
 ## Releasing
 
 The chart is published to `oci://ghcr.io/sifungurux/charts/netbird`
-(public) by `.github/workflows/chart.yaml`.
+(public) by `.github/workflows/chart.yaml`. New GHCR packages start
+private: after the first publish, set Package settings → visibility to
+Public once, then check that `helm show chart
+oci://ghcr.io/sifungurux/charts/netbird` works without `helm registry login`.
+The rack and homelab's Renovate pull it without credentials.
 
 1. Renovate opens a PR bumping a NetBird image tag in
    `chart/netbird/values.yaml` and the chart `version`: upstream major,
