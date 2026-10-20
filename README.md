@@ -78,7 +78,7 @@ peer takes over by itself.
   outside the colima VM on the test cluster. The relay over 443 covers it.
   If 443 isn't reachable on the LAN IP either, restart the profile with
   `colima start netbird --network-address`.
-- **Laptop IP.** If DHCP changes `192.168.0.18`, update the Cloudflare A
+- **Laptop IP.** If DHCP changes `192.168.50.138`, update the Cloudflare A
   record, `test/coredns-custom.yaml` and `/etc/hosts`.
 - **KUBECONFIG with several entries** makes k3d write no context.
   `test/up.sh` merges into `~/.kube/config` explicitly.

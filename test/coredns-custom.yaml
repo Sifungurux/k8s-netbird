@@ -16,7 +16,7 @@ data:
   netbird-test.server: |
     netbird-test.nordkeel.dk:53 {
       hosts {
-        192.168.0.18 netbird-test.nordkeel.dk
+        192.168.50.138 netbird-test.nordkeel.dk
         fallthrough
       }
       # Everything else in this zone (SOA, the _acme-challenge TXT that
