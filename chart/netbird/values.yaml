@@ -1,0 +1,35 @@
+# Per-cluster values. The first three have no default: a render without
+# them fails instead of producing an empty hostname or issuer.
+domain: ""          # e.g. netbird.nordkeel.dk
+clusterIssuer: ""   # cert-manager ClusterIssuer for netbird-tls
+gatewayClass: envoy
+clusterName: ""     # routing peer hostname: routing-peer-<clusterName>
+
+gateway:
+  # Annotations for the Envoy Service of the netbird Gateway (via the
+  # EnvoyProxy), e.g. a fixed MetalLB IP for the router's 443 forward.
+  serviceAnnotations: {}
+
+stun:
+  # Annotations for the netbird-stun LoadBalancer, e.g. a fixed MetalLB IP
+  # for the router's 3478/udp forward.
+  serviceAnnotations: {}
+
+# netbird-server and the routing peer's netbird client share a version;
+# Renovate bumps them together.
+server:
+  image:
+    repository: netbirdio/netbird-server
+    tag: "0.80.0"
+  persistence:
+    size: 1Gi
+
+dashboard:
+  image:
+    repository: netbirdio/dashboard
+    tag: v2.94.0
+
+routingPeer:
+  image:
+    repository: netbirdio/netbird
+    tag: "0.80.0"

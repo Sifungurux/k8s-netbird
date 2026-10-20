@@ -1,0 +1,108 @@
+# Combined NetBird server: management, signal, relay and STUN in one
+# container (upstream layout since v0.65). Its config.yaml holds secrets
+# and is created out-of-band by scripts/secrets.sh -- see that script.
+#
+# One replica and Recreate: the store is SQLite on a ReadWriteOnce PVC.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: netbird-data
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    # This is the database: helm uninstall (or helm-controller remediating a
+    # failed install) must leave it, and the chart never recreates it.
+    helm.sh/resource-policy: keep
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: {{ .Values.server.persistence.size }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: netbird-server
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: netbird-server
+  template:
+    metadata:
+      labels:
+        app: netbird-server
+    spec:
+      containers:
+        - name: server
+          image: {{ .Values.server.image.repository }}:{{ .Values.server.image.tag }}
+          args: ["--config", "/etc/netbird/config.yaml"]
+          ports:
+            - name: http
+              containerPort: 80
+            - name: stun
+              containerPort: 3478
+              protocol: UDP
+            - name: health
+              containerPort: 9000
+          readinessProbe:
+            tcpSocket:
+              port: health
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: health
+            periodSeconds: 20
+            failureThreshold: 6
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+          volumeMounts:
+            - name: config
+              mountPath: /etc/netbird
+              readOnly: true
+            - name: data
+              mountPath: /var/lib/netbird
+      volumes:
+        - name: config
+          secret:
+            secretName: netbird-server-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: netbird-data
+---
+# Port 80 speaks both HTTP/1.1 (REST, OAuth2, WebSocket relay) and h2c
+# (gRPC). Envoy picks the upstream protocol per Service, so there are two
+# Services in front of the one port: gRPC routes use the h2c one, and
+# WebSocket MUST use the plain one -- an h2c upstream breaks the upgrade.
+apiVersion: v1
+kind: Service
+metadata:
+  name: netbird-server
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    app: netbird-server
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: netbird-server-grpc
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    app: netbird-server
+  ports:
+    - name: grpc
+      port: 80
+      targetPort: http
+      appProtocol: kubernetes.io/h2c

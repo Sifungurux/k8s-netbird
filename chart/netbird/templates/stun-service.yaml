@@ -1,0 +1,25 @@
+# STUN is UDP and cannot go through the Gateway. On the rack,
+# stun.serviceAnnotations sets a fixed MetalLB IP so the router's 3478/udp
+# forward has a stable target.
+apiVersion: v1
+kind: Service
+metadata:
+  name: netbird-stun
+  namespace: {{ .Release.Namespace }}
+  {{- with .Values.stun.serviceAnnotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: LoadBalancer
+  # Local, not Cluster: a hop to another node SNATs the packet, and STUN
+  # would then report that node's LAN address as the peer's reflexive
+  # address -- P2P silently degrades to relay. MetalLB L2 announces the
+  # IP from the node running the pod instead.
+  externalTrafficPolicy: Local
+  selector:
+    app: netbird-server
+  ports:
+    - name: stun
+      port: 3478
+      targetPort: stun
+      protocol: UDP

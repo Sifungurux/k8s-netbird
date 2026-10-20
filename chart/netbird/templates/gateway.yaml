@@ -1,0 +1,123 @@
+# Own Gateway on the shared "envoy" GatewayClass, so NetBird gets its own
+# LoadBalancer IP (the router's 443 forward target) instead of sharing the
+# supply-chain-monitor Gateway. The EnvoyProxy exists to put
+# gateway.serviceAnnotations (the rack's fixed MetalLB IP) on the Envoy
+# Service; empty, it changes nothing.
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: netbird
+  namespace: {{ .Release.Namespace }}
+spec:
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyService:
+        annotations: {{- toYaml .Values.gateway.serviceAnnotations | nindent 10 }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: netbird
+  namespace: {{ .Release.Namespace }}
+spec:
+  gatewayClassName: {{ required "gatewayClass is required" .Values.gatewayClass }}
+  infrastructure:
+    parametersRef:
+      group: gateway.envoyproxy.io
+      kind: EnvoyProxy
+      name: netbird
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: {{ required "domain is required" .Values.domain }}
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: netbird-tls
+      allowedRoutes:
+        namespaces:
+          from: Same
+---
+# Explicit Certificate rather than cert-manager's gateway-shim, which
+# would need enableGatewayAPI turned on in the rack's cert-manager.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: netbird-tls
+  namespace: {{ .Release.Namespace }}
+spec:
+  secretName: netbird-tls
+  dnsNames:
+    - {{ required "domain is required" .Values.domain }}
+  issuerRef:
+    kind: ClusterIssuer
+    name: {{ required "clusterIssuer is required" .Values.clusterIssuer }}
+---
+# Paths from the upstream quickstart's Traefik labels. Longest prefix
+# wins, so "/" only catches what the server does not serve.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: netbird
+  namespace: {{ .Release.Namespace }}
+spec:
+  parentRefs:
+    - name: netbird
+  hostnames:
+    - {{ required "domain is required" .Values.domain }}
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /signalexchange.SignalExchange/
+        - path:
+            type: PathPrefix
+            value: /management.ManagementService/
+      backendRefs:
+        - name: netbird-server-grpc
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /relay
+        - path:
+            type: PathPrefix
+            value: /ws-proxy/
+        - path:
+            type: PathPrefix
+            value: /api
+        - path:
+            type: PathPrefix
+            value: /oauth2
+      backendRefs:
+        - name: netbird-server
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: netbird-dashboard
+          port: 80
+---
+# Peers hold management/signal gRPC streams and relay WebSockets open
+# indefinitely. Envoy's defaults (15s route timeout, 5m stream idle)
+# would cut them and make every peer reconnect in a loop. Upstream's
+# Traefik setup disables the equivalent timeouts the same way.
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: netbird-streams
+  namespace: {{ .Release.Namespace }}
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: netbird
+  timeout:
+    http:
+      requestTimeout: 0s
+      maxStreamDuration: 0s
+      streamIdleTimeout: 0s
