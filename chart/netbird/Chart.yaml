@@ -4,6 +4,6 @@ description: Self-hosted NetBird (combined netbird-server, embedded IdP) behind 
 type: application
 # Every change under chart/ bumps this (CI enforces). Upstream major/minor/
 # patch bumps map to the same level here; hand-made changes bump patch.
-version: 1.2.0
+version: 1.2.1
 # ponytail: no appVersion -- the images live in values.yaml and Renovate bumps
 # them there; appVersion would be a second copy to keep in sync.
