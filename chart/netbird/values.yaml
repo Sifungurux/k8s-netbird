@@ -20,7 +20,7 @@ stun:
 server:
   image:
     repository: netbirdio/netbird-server
-    tag: "0.81.3"
+    tag: "0.82.0"
   persistence:
     size: 1Gi
 
@@ -32,4 +32,4 @@ dashboard:
 routingPeer:
   image:
     repository: netbirdio/netbird
-    tag: "0.81.3"
+    tag: "0.82.0"
