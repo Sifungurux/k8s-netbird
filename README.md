@@ -54,9 +54,10 @@ CLOUDFLARE_API_TOKEN=... scripts/secrets.sh cloudflare
 scripts/secrets.sh server netbird-test.nordkeel.dk   # also creates the namespace
 make apply && make verify                 # helm upgrade --install; make render = helm template
 # dashboard: claim owner, create a reusable + ephemeral setup key with
-# auto-group "<cluster>-routers" (e.g. test-routers)
+# auto-group "<cluster>-routers" (e.g. test-routers) and a long expiry
 NB_SETUP_KEY=... scripts/secrets.sh routing-peer && make apply
 # Networks: set the routing peer to the GROUP <cluster>-routers, not the peer
+# Access: a separate group (rack-users) as the policy source and as users' auto-group
 ```
 
 The routing peer keeps its state in an `emptyDir` and enrolls with an
@@ -64,6 +65,24 @@ ephemeral key. Every pod restart therefore creates a **new** peer, and the
 old one is cleaned up. A Network routed through the individual peer loses
 its router on the first reschedule. Routed through the auto-group, the new
 peer takes over by itself.
+
+Keep two groups apart:
+
+- **`<cluster>-routers`** holds only the routing peer. Every peer in a
+  Network's router group *is* a router for it, and routers don't receive
+  the route themselves.
+- **Who may reach the LAN** is a separate group: `rack-users` on the
+  rack. It is the access policy's source and your user's auto-group.
+
+When the user's auto-group was `rack-routers` (2026-10-29), each login put
+the phone into the router group, and the app showed no networks.
+
+The setup key needs a long expiry, not a short one. The routing peer
+registers again on every restart, and after 10 minutes offline, since
+ephemeral peers are deleted then. An expired key works until that moment,
+then the LAN is gone. Rack key: `Netbird homelab`, expires 2027-10-29.
+Check: `kubectl --context rack -n netbird logs deploy/netbird-routing-peer
+| grep 'IPv4 forwarding enabled'`.
 
 ## Releasing
 
