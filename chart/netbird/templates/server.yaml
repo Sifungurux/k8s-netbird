@@ -35,6 +35,16 @@ spec:
       labels:
         app: netbird-server
     spec:
+      affinity:
+        # Pods behind a LoadBalancer with externalTrafficPolicy Local: MetalLB
+        # announces the IP only from their node, and never from nodes labelled
+        # exclude-from-external-load-balancers (kubeadm's control planes).
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node.kubernetes.io/exclude-from-external-load-balancers
+                    operator: DoesNotExist
       containers:
         - name: server
           image: {{ .Values.server.image.repository }}:{{ .Values.server.image.tag }}
